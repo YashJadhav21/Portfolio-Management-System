@@ -39,6 +39,13 @@ export const companyService = {
   delete: (id) => api.delete(`/companies/${id}`),
 };
 
+export const bankService = {
+  getAll: (params) => api.get("/banks", { params }),
+  create: (data) => api.post("/banks", data),
+  update: (id, data) => api.put(`/banks/${id}`, data),
+  delete: (id) => api.delete(`/banks/${id}`),
+};
+
 export const amcService = {
   getAll: (params) => api.get("/amcs", { params }),
   create: (data) => api.post("/amcs", data),

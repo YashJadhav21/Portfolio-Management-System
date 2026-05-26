@@ -29,6 +29,7 @@ app.use('/api/investors', require('./routes/investor.routes'));
 app.use('/api/categories', require('./routes/category.routes'));
 app.use('/api/subcategories', require('./routes/subcategory.routes'));
 app.use('/api/companies', require('./routes/company.routes'));
+app.use('/api/banks', require('./routes/bank.routes'));
 app.use('/api/amcs', require('./routes/amc.routes'));
 app.use('/api/schemes', require('./routes/scheme.routes'));
 app.use('/api/fd', require('./routes/fd.routes'));
@@ -36,6 +37,7 @@ app.use('/api/mf', require('./routes/mf.routes'));
 app.use('/api/shares', require('./routes/share.routes'));
 app.use('/api/dashboard', require('./routes/dashboard.routes'));
 app.use('/api/reports', require('./routes/report.routes'));
+app.use('/api/investor-portal', require('./routes/investor-portal.routes'));
 
 // 404 handler
 app.use((req, res) => {

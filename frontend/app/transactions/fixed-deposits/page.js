@@ -243,8 +243,8 @@ export default function FixedDepositsPage() {
   const handleFormSubmit = async (data) => {
     setFormLoading(true);
     try {
-      if (editRecord) { await fdService.update(editRecord._id, data); toast.success("FD updated!"); }
-      else { await fdService.create(data); toast.success("FD created!"); }
+      if (editRecord) { await fdService.update(editRecord._id, data); toast.success("Fixed Income updated!"); }
+      else { await fdService.create(data); toast.success("Fixed Income created!"); }
       setModalOpen(false);
       fetchData(page, search);
     } catch (e) { toast.error(e.response?.data?.message || "Failed"); }
@@ -255,7 +255,7 @@ export default function FixedDepositsPage() {
     setDeleteLoading(true);
     try {
       await fdService.delete(deleteId);
-      toast.success("FD deleted!");
+      toast.success("Fixed Income deleted!");
       setDeleteOpen(false);
       fetchData(page, search);
     } catch { toast.error("Delete failed"); }
@@ -281,12 +281,12 @@ export default function FixedDepositsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Fixed Deposits"
-        description="Track and manage all fixed deposit investments"
+        title="Fixed Income"
+        description="Track and manage all fixed income investments"
         actions={
           <button onClick={() => { setEditRecord(null); setModalOpen(true); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-blue-500/20">
-            <Plus className="w-4 h-4" /> Add FD
+            <Plus className="w-4 h-4" /> Add Fixed Income
           </button>
         }
       />
@@ -320,7 +320,7 @@ export default function FixedDepositsPage() {
       </div>
 
       <FormModal isOpen={modalOpen} onClose={() => setModalOpen(false)}
-        title={editRecord ? "Edit Fixed Deposit" : "Add Fixed Deposit"} size="xl">
+        title={editRecord ? "Edit Fixed Income" : "Add Fixed Income"} size="xl">
         <FDForm data={editRecord} onSubmit={handleFormSubmit} isLoading={formLoading} onCancel={() => setModalOpen(false)} />
       </FormModal>
 

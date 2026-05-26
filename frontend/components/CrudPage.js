@@ -28,6 +28,7 @@ export default function CrudPage({
   FormComponent,
   searchPlaceholder = "Search...",
   modalSize = "md",
+  extraActions = null,
 }) {
   const [records, setRecords] = useState([]);
   const [total, setTotal] = useState(0);
@@ -139,6 +140,7 @@ export default function CrudPage({
     header: "Actions",
     cell: ({ row }) => (
       <div className="flex items-center gap-1">
+        {extraActions && extraActions(row)}
         <button
           onClick={() => handleEdit(row.original)}
           className="p-1.5 rounded-lg text-slate-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all"

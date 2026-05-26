@@ -43,6 +43,7 @@ const login = async (req, res) => {
         username: user.username,
         email: user.email,
         role: user.role,
+        investorId: user.investorId || null,
       },
     });
   } catch (error) {
@@ -61,6 +62,7 @@ const getMe = async (req, res) => {
       username: req.user.username,
       email: req.user.email,
       role: req.user.role,
+      investorId: req.user.investorId || null,
     },
   });
 };

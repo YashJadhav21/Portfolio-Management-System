@@ -32,9 +32,13 @@ export default function LoginPage() {
   const onSubmit = async (data) => {
     setIsLoading(true);
     try {
-      await login(data);
-      toast.success("Welcome back! Redirecting to dashboard...");
-      router.push("/dashboard");
+      const userData = await login(data);
+      toast.success("Welcome back! Redirecting...");
+      if (userData.role === "investor") {
+        router.push("/investor/dashboard");
+      } else {
+        router.push("/dashboard");
+      }
     } catch (error) {
       const msg = error.response?.data?.message || "Login failed. Please try again.";
       toast.error(msg);

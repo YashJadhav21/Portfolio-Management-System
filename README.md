@@ -41,7 +41,7 @@ Portfolio Management System/
 cd backend
 npm install
 # Edit .env — set your MONGODB_URI
-npm run seed    # Load dummy data
+npm run seed    # Clear the database and load spreadsheet-backed data
 npm run dev     # Start backend on :5000
 ```
 

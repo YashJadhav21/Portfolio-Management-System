@@ -6,6 +6,7 @@ const shareSchema = new mongoose.Schema(
     companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
     transactionDate: { type: Date, required: true },
     type: { type: String, enum: ['Buy', 'Sell'], required: true },
+    exchange: { type: String, enum: ['BSE', 'NSE'], required: true, default: 'NSE' },
     quantity: { type: Number, required: true, min: 1 },
     price: { type: Number, required: true, min: 0 }, // buy or sell price per share
     brokerage: { type: Number, default: 0, min: 0 },

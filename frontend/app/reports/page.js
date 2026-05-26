@@ -88,12 +88,6 @@ function ReportTable({ columns, data, loading }) {
 
 const REPORTS = [
   {
-    id: "investor-portfolio",
-    label: "Investor Portfolio",
-    description: "Complete portfolio summary per investor across all asset classes",
-    icon: "👤",
-  },
-  {
     id: "amc-wise",
     label: "AMC-wise Report",
     description: "Mutual fund investments grouped by Asset Management Company",
@@ -117,26 +111,10 @@ const REPORTS = [
     description: "Realized P&L from mutual fund redemptions and share sales",
     icon: "💹",
   },
-  {
-    id: "asset-allocation",
-    label: "Asset Allocation",
-    description: "Portfolio split across Fixed Deposits, Mutual Funds, and Shares",
-    icon: "🥧",
-  },
 ];
 
 // Column definitions per report
 const COLUMNS = {
-  "investor-portfolio": [
-    { key: "name", label: "Investor" },
-    { key: "group", label: "Group" },
-    { key: "pan", label: "PAN" },
-    { key: "fdInvested", label: "FD Amount", render: (v) => formatCurrency(v) },
-    { key: "fdMaturity", label: "FD Maturity", render: (v) => formatCurrency(v) },
-    { key: "mfInvested", label: "MF Net", render: (v) => formatCurrency(v) },
-    { key: "sharesInvested", label: "Shares Net", render: (v) => formatCurrency(v) },
-    { key: "totalPortfolio", label: "Total Portfolio", render: (v) => <span className="font-bold text-blue-400">{formatCurrency(v)}</span> },
-  ],
   "amc-wise": [
     { key: "amc", label: "AMC", render: (v) => v?.name || "—" },
     { key: "txCount", label: "Transactions" },
@@ -181,29 +159,15 @@ const COLUMNS = {
     { key: "sharesPnL", label: "Shares P&L", render: (v) => <span className={v >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>{v >= 0 ? "+" : ""}{formatCurrency(v)}</span> },
     { key: "totalPnL", label: "Total P&L", render: (v) => <span className={`font-bold text-lg ${v >= 0 ? "text-emerald-400" : "text-red-400"}`}>{v >= 0 ? "+" : ""}{formatCurrency(v)}</span> },
   ],
-  "asset-allocation": [
-    { key: "asset", label: "Asset Class" },
-    { key: "amount", label: "Amount", render: (v) => <span className="font-semibold">{formatCurrency(v)}</span> },
-    { key: "percentage", label: "Allocation %", render: (v) => (
-      <div className="flex items-center gap-3">
-        <div className="flex-1 bg-slate-800 rounded-full h-2 max-w-[120px]">
-          <div className="h-2 rounded-full bg-blue-500" style={{ width: `${v}%` }} />
-        </div>
-        <span className="text-blue-400 font-semibold">{v}%</span>
-      </div>
-    )},
-  ],
 };
 
 // Fetch functions
 async function fetchReport(id, params) {
   switch (id) {
-    case "investor-portfolio": return (await reportService.investorPortfolio()).data.data;
     case "amc-wise": return (await reportService.amcWise()).data.data;
     case "fd-maturity": return (await reportService.fdMaturity(params)).data.data;
     case "mf-holdings": return (await reportService.mfHoldings()).data.data;
     case "profit-loss": return (await reportService.profitLoss()).data.data;
-    case "asset-allocation": return (await reportService.assetAllocation()).data.data;
     default: return [];
   }
 }
@@ -229,7 +193,7 @@ function flattenForCSV(reportId, data) {
 }
 
 export default function ReportsPage() {
-  const [activeReport, setActiveReport] = useState("investor-portfolio");
+  const [activeReport, setActiveReport] = useState("amc-wise");
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [fdStatus, setFdStatus] = useState("");

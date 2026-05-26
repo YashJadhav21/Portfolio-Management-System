@@ -1,0 +1,30 @@
+{
+  "createdAt": "2026-05-23T09:36:16.796Z",
+  "preset": "recommended",
+  "mode": "stable",
+  "totalIssues": 2,
+  "entries": [
+    {
+      "filePath": "components\\CrudPage.js",
+      "issues": [
+        {
+          "ruleId": "react-hooks/exhaustive-deps",
+          "message": "Definition for rule 'react-hooks/exhaustive-deps' was not found.",
+          "line": 66,
+          "column": 5
+        }
+      ]
+    },
+    {
+      "filePath": "next.config.mjs",
+      "issues": [
+        {
+          "ruleId": "ai-guard/no-async-without-await",
+          "message": "Async function does not contain `await`. AI tools frequently add `async` unnecessarily, which can mislead callers and mask intent. Remove `async` or add proper await logic.",
+          "line": 4,
+          "column": 16
+        }
+      ]
+    }
+  ]
+}

@@ -19,6 +19,7 @@ const schema = z.object({
   companyId: z.string().min(1, "Company is required"),
   transactionDate: z.string().min(1, "Date is required"),
   type: z.enum(["Buy", "Sell"]),
+  exchange: z.enum(["BSE", "NSE"]),
   quantity: z.coerce.number().int().positive("Quantity must be positive"),
   price: z.coerce.number().positive("Price must be positive"),
   brokerage: z.coerce.number().min(0).default(0),
@@ -47,7 +48,7 @@ function ShareForm({ data, onSubmit, isLoading, onCancel }) {
     defaultValues: {
       investorId: "", companyId: "",
       transactionDate: new Date().toISOString().split("T")[0],
-      type: "Buy", quantity: "", price: "", brokerage: 0, notes: "",
+      type: "Buy", exchange: "NSE", quantity: "", price: "", brokerage: 0, notes: "",
     },
   });
 
@@ -62,14 +63,14 @@ function ShareForm({ data, onSubmit, isLoading, onCancel }) {
         investorId: data.investorId?._id || data.investorId || "",
         companyId: data.companyId?._id || data.companyId || "",
         transactionDate: data.transactionDate?.split("T")[0] || "",
-        type: data.type, quantity: data.quantity,
+        type: data.type, exchange: data.exchange || "NSE", quantity: data.quantity,
         price: data.price, brokerage: data.brokerage || 0, notes: data.notes || "",
       });
     } else {
       reset({
         investorId: "", companyId: "",
         transactionDate: new Date().toISOString().split("T")[0],
-        type: "Buy", quantity: "", price: "", brokerage: 0, notes: "",
+        type: "Buy", exchange: "NSE", quantity: "", price: "", brokerage: 0, notes: "",
       });
     }
   }, [data, reset]);
@@ -92,6 +93,13 @@ function ShareForm({ data, onSubmit, isLoading, onCancel }) {
           <select {...register("type")} className={ic}>
             <option value="Buy">Buy</option>
             <option value="Sell">Sell</option>
+          </select>
+        </div>
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Exchange *</label>
+          <select {...register("exchange")} className={ic}>
+            <option value="NSE">NSE (National Stock Exchange)</option>
+            <option value="BSE">BSE (Bombay Stock Exchange)</option>
           </select>
         </div>
         <div>
@@ -153,6 +161,10 @@ const txColumns = [
       <p className="text-slate-500 text-xs font-mono">{getValue()?.symbol}</p>
     </div>
   )},
+  { accessorKey: "exchange", header: "Exchange", cell: ({ getValue }) => {
+    const ex = getValue() || "—";
+    return <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${ex === "BSE" ? "text-orange-400 bg-orange-500/10" : "text-blue-400 bg-blue-500/10"}`}>{ex}</span>;
+  }},
   { accessorKey: "type", header: "Type", cell: ({ getValue }) => <StatusBadge status={getValue()} /> },
   { accessorKey: "quantity", header: "Qty", cell: ({ getValue }) => <span className="font-mono">{getValue()}</span> },
   { accessorKey: "price", header: "Price", cell: ({ getValue }) => `₹${getValue()?.toFixed(2)}` },

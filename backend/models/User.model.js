@@ -6,8 +6,9 @@ const userSchema = new mongoose.Schema(
     username: { type: String, required: true, unique: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true, minlength: 6 },
-    role: { type: String, enum: ['admin', 'user'], default: 'admin' },
+    role: { type: String, enum: ['admin', 'investor', 'user'], default: 'admin' },
     isActive: { type: Boolean, default: true },
+    investorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Investor', default: null },
   },
   { timestamps: true }
 );

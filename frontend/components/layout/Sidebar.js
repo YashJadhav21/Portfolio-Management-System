@@ -36,11 +36,24 @@ const navItems = [
     label: "Masters",
     icon: FolderOpen,
     children: [
-      { label: "Groups", href: "/masters/groups", icon: Users },
-      { label: "Investors", href: "/masters/investors", icon: Users },
-      { label: "Categories", href: "/masters/categories", icon: Tag },
-      { label: "Subcategories", href: "/masters/subcategories", icon: Tags },
+      { 
+        label: "Groups", 
+        href: "/masters/groups", 
+        icon: Users,
+        subItems: [
+          { label: "Investors", href: "/masters/investors", icon: Users }
+        ]
+      },
+      { 
+        label: "Categories", 
+        href: "/masters/categories", 
+        icon: Tag,
+        subItems: [
+          { label: "Subcategories", href: "/masters/subcategories", icon: Tags }
+        ]
+      },
       { label: "Companies", href: "/masters/companies", icon: Building2 },
+      { label: "Banks", href: "/masters/banks", icon: Landmark },
       { label: "AMCs", href: "/masters/amcs", icon: Landmark },
       { label: "Schemes", href: "/masters/schemes", icon: BookOpen },
     ],
@@ -49,7 +62,7 @@ const navItems = [
     label: "Transactions",
     icon: TrendingUp,
     children: [
-      { label: "Fixed Deposits", href: "/transactions/fixed-deposits", icon: Banknote },
+      { label: "Fixed Income", href: "/transactions/fixed-deposits", icon: Banknote },
       { label: "Mutual Funds", href: "/transactions/mutual-funds", icon: TrendingUp },
       { label: "Shares", href: "/transactions/shares", icon: BarChart2 },
     ],
@@ -84,43 +97,65 @@ function NavItem({ item, collapsed }) {
           <item.icon className={cn("w-5 h-5 shrink-0", isActive ? "text-blue-400" : "text-slate-500 group-hover:text-slate-300")} />
           {!collapsed && (
             <>
-              <span className="flex-1 text-left">{item.label}</span>
-              {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-            </>
-          )}
-        </button>
-        <AnimatePresence>
-          {open && !collapsed && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: "auto", opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="ml-4 mt-1 space-y-0.5 border-l border-slate-800 pl-3">
-                {item.children.map((child) => (
+            <span className="flex-1 text-left">{item.label}</span>
+            {open ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </>
+        )}
+      </button>
+      <AnimatePresence>
+        {open && !collapsed && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="ml-4 mt-1 space-y-0.5 border-l border-slate-800 pl-3">
+              {item.children.map((child) => (
+                <div key={child.label || child.href}>
                   <Link
-                    key={child.href}
-                    href={child.href}
+                    href={child.href || "#"}
+                    onClick={child.subItems ? (e) => { e.preventDefault(); child.onClick && child.onClick(); } : undefined}
                     className={cn(
                       "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-150",
-                      pathname === child.href
+                      (pathname === child.href || (child.subItems && child.subItems.some(s => pathname === s.href)))
                         ? "text-blue-400 bg-blue-500/10 font-medium"
                         : "text-slate-500 hover:text-slate-200 hover:bg-slate-800/60"
                     )}
                   >
                     <child.icon className="w-4 h-4 shrink-0" />
-                    {child.label}
+                    <span className="flex-1">{child.label}</span>
+                    {child.subItems && <ChevronRight className="w-3 h-3" />}
                   </Link>
-                ))}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  }
+                  {child.subItems && (
+                    <div className="ml-4 mt-1 space-y-0.5 border-l border-slate-800 pl-3">
+                      {child.subItems.map(subItem => (
+                        <Link
+                          key={subItem.href}
+                          href={subItem.href}
+                          className={cn(
+                            "flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-all duration-150",
+                            pathname === subItem.href
+                              ? "text-blue-400 bg-blue-500/10 font-medium"
+                              : "text-slate-500 hover:text-slate-200 hover:bg-slate-800/60"
+                          )}
+                        >
+                          <subItem.icon className="w-3.5 h-3.5 shrink-0" />
+                          <span>{subItem.label}</span>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
   return (
     <Link
