@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import DataTable from "@/components/tables/DataTable";
 
 /**
- * Read-only master data table for investor portal.
- * Shows data from the shared API but without Add/Edit/Delete actions.
+ * Read-only master data table for investor portal — shows reference data.
+ * Investors can view all master data (read-only reference).
  */
 export default function InvestorMasterTable({
   title,
@@ -60,14 +60,6 @@ export default function InvestorMasterTable({
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
           Refresh
         </button>
-      </div>
-
-      {/* Read-only notice */}
-      <div className="flex items-center gap-2 px-4 py-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl">
-        <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
-        <p className="text-emerald-300 text-xs">
-          This is a <strong>read-only</strong> reference view. Contact your portfolio manager to make changes to master data.
-        </p>
       </div>
 
       {/* Table */}

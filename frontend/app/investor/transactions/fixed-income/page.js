@@ -14,7 +14,10 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import { investorPortalService } from "@/services/investor-api.service";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
+const FD_SUBCATEGORIES = ['BNFD','CNFD','BCFD','CCFD','CD','NCD','PMIS','PTD','Insurance Annuity'];
+
 const schema = z.object({
+  subcategory: z.string().min(1, "Sub-category is required"),
   bankName: z.string().min(1, "Bank name is required"),
   fdNumber: z.string().optional(),
   effectiveDate: z.string().min(1, "Effective date is required"),
@@ -53,7 +56,7 @@ function FDForm({ data, onSubmit, isLoading, onCancel }) {
   } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
-      bankName: "", fdNumber: "", effectiveDate: "",
+      subcategory: "BNFD", bankName: "", fdNumber: "", effectiveDate: "",
       amount: "", interestRate: "", tenureMonths: "", maturityDate: "",
       interestFrequency: "On Maturity", status: "Active", notes: "",
     },
@@ -74,6 +77,7 @@ function FDForm({ data, onSubmit, isLoading, onCancel }) {
   useEffect(() => {
     if (data) {
       reset({
+        subcategory: data.subcategory || "BNFD",
         bankName: data.bankName, fdNumber: data.fdNumber || "",
         effectiveDate: data.effectiveDate ? data.effectiveDate.split("T")[0] : "",
         amount: data.amount, interestRate: data.interestRate,
@@ -82,7 +86,7 @@ function FDForm({ data, onSubmit, isLoading, onCancel }) {
         interestFrequency: data.interestFrequency, status: data.status, notes: data.notes || "",
       });
     } else {
-      reset({ bankName: "", fdNumber: "", effectiveDate: "", amount: "", interestRate: "", tenureMonths: "", maturityDate: "", interestFrequency: "On Maturity", status: "Active", notes: "" });
+      reset({ subcategory: "BNFD", bankName: "", fdNumber: "", effectiveDate: "", amount: "", interestRate: "", tenureMonths: "", maturityDate: "", interestFrequency: "On Maturity", status: "Active", notes: "" });
     }
   }, [data, reset]);
 
@@ -91,6 +95,13 @@ function FDForm({ data, onSubmit, isLoading, onCancel }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Sub-Category *</label>
+          <select {...register("subcategory")} className={ic}>
+            {FD_SUBCATEGORIES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          {errors.subcategory && <p className="text-red-400 text-xs mt-1">{errors.subcategory.message}</p>}
+        </div>
         <div>
           <label className="text-sm font-medium text-slate-300 block mb-1.5">Bank Name *</label>
           <input {...register("bankName")} className={ic} placeholder="e.g. SBI Bank" />
@@ -172,13 +183,14 @@ function FDForm({ data, onSubmit, isLoading, onCancel }) {
 }
 
 const columns = [
-  { accessorKey: "bankName", header: "Bank" },
-  { accessorKey: "fdNumber", header: "FD Number", cell: ({ getValue }) => <span className="font-mono text-xs text-slate-400">{getValue() || "—"}</span> },
-  { accessorKey: "amount", header: "Amount", cell: ({ getValue }) => <span className="font-medium">{formatCurrency(getValue())}</span> },
-  { accessorKey: "interestRate", header: "Rate", cell: ({ getValue }) => <span className="text-amber-400 font-medium">{getValue()}%</span> },
-  { accessorKey: "tenureMonths", header: "Tenure", cell: ({ getValue }) => `${getValue()} mo` },
-  { accessorKey: "maturityAmount", header: "Maturity Amt", cell: ({ getValue }) => <span className="text-emerald-400 font-semibold">{formatCurrency(getValue())}</span> },
-  { accessorKey: "maturityDate", header: "Maturity Date", cell: ({ getValue }) => formatDate(getValue()) },
+  { accessorKey: "subcategory", header: "Sub-Category", cell: ({ getValue }) => <span className="font-semibold text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded-lg text-xs">{getValue() || "—"}</span> },
+  { accessorKey: "bankName", header: "Bank", cell: ({ getValue }) => <span className="font-semibold text-slate-100">{getValue()}</span> },
+  { accessorKey: "fdNumber", header: "FD Number", cell: ({ getValue }) => <span className="font-mono text-sm text-slate-300 font-semibold">{getValue() || "—"}</span> },
+  { accessorKey: "amount", header: "Amount", cell: ({ getValue }) => <span className="font-bold text-slate-100">{formatCurrency(getValue())}</span> },
+  { accessorKey: "interestRate", header: "Rate", cell: ({ getValue }) => <span className="text-amber-400 font-bold">{getValue()}%</span> },
+  { accessorKey: "tenureMonths", header: "Tenure", cell: ({ getValue }) => <span className="font-semibold">{getValue()} mo</span> },
+  { accessorKey: "maturityAmount", header: "Maturity Amt", cell: ({ getValue }) => <span className="text-emerald-400 font-bold">{formatCurrency(getValue())}</span> },
+  { accessorKey: "maturityDate", header: "Maturity Date", cell: ({ getValue }) => <span className="font-semibold">{formatDate(getValue())}</span> },
   { accessorKey: "status", header: "Status", cell: ({ getValue }) => <StatusBadge status={getValue()} /> },
 ];
 

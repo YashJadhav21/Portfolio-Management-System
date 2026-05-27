@@ -128,11 +128,12 @@ function SchemeForm({ data, onSubmit, isLoading, onCancel }) {
 }
 
 const columns = [
-  { accessorKey: "name", header: "Scheme Name", cell: ({ getValue }) => <span className="font-medium text-slate-200 max-w-[200px] truncate block">{getValue()}</span> },
-  { accessorKey: "amcId", header: "AMC", cell: ({ getValue }) => <span className="text-slate-400">{getValue()?.name || "—"}</span> },
-  { accessorKey: "categoryId", header: "Category", cell: ({ getValue }) => <span className="text-blue-400">{getValue()?.name || "—"}</span> },
+  { accessorKey: "amcId", header: "AMC", cell: ({ getValue }) => <span className="font-semibold text-slate-200">{getValue()?.name || "—"}</span> },
+  { accessorKey: "code", header: "Scheme Code", cell: ({ getValue }) => <span className="font-mono text-emerald-400 font-bold">{getValue() || "—"}</span> },
+  { accessorKey: "name", header: "Scheme Name", cell: ({ getValue }) => <span className="font-semibold text-slate-100 max-w-[280px] truncate block">{getValue()}</span> },
+  { accessorKey: "categoryId", header: "Category", cell: ({ getValue }) => <span className="font-semibold text-blue-400">{getValue()?.name || "—"}</span> },
   { accessorKey: "riskLevel", header: "Risk", cell: ({ getValue }) => <StatusBadge status={getValue()} /> },
-  { accessorKey: "nav", header: "NAV", cell: ({ getValue }) => <span className="font-medium text-emerald-400">₹{getValue()?.toFixed(2)}</span> },
+  { accessorKey: "nav", header: "NAV (₹)", cell: ({ getValue }) => <span className="font-bold text-emerald-400">₹{getValue()?.toFixed(2)}</span> },
   { accessorKey: "status", header: "Status", cell: ({ getValue }) => <StatusBadge status={getValue()} /> },
 ];
 

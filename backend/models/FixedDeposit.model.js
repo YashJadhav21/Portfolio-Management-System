@@ -3,6 +3,12 @@ const mongoose = require('mongoose');
 const fixedDepositSchema = new mongoose.Schema(
   {
     investorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Investor', required: true },
+    subcategory: {
+      type: String,
+      enum: ['BNFD', 'CNFD', 'BCFD', 'CCFD', 'CD', 'NCD', 'PMIS', 'PTD', 'Insurance Annuity'],
+      required: true,
+      default: 'BNFD',
+    },
     bankName: { type: String, required: true, trim: true },
     fdNumber: { type: String, trim: true, default: '' },
     effectiveDate: { type: Date, required: true },
