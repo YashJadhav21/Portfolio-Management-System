@@ -32,8 +32,8 @@ async function getInvestorTotals(investorId) {
       {
         $group: {
           _id: null,
-          buy: { $sum: { $cond: [{ $eq: ['$type', 'Buy'] }, '$totalAmount', 0] } },
-          sell: { $sum: { $cond: [{ $eq: ['$type', 'Sell'] }, '$totalAmount', 0] } },
+          buy: { $sum: { $cond: [{ $eq: ['$type', 'Purchase'] }, '$amount', 0] } },
+          sell: { $sum: { $cond: [{ $eq: ['$type', 'Sales'] }, '$amount', 0] } },
         },
       },
     ]),
@@ -423,20 +423,21 @@ const getMyShareHoldings = async (req, res) => {
       { $match: { investorId: id } },
       {
         $group: {
-          _id: '$companyId',
-          totalBuyQty: { $sum: { $cond: [{ $eq: ['$type', 'Buy'] }, '$quantity', 0] } },
-          totalSellQty: { $sum: { $cond: [{ $eq: ['$type', 'Sell'] }, '$quantity', 0] } },
-          totalBuyAmount: { $sum: { $cond: [{ $eq: ['$type', 'Buy'] }, '$totalAmount', 0] } },
-          totalSellAmount: { $sum: { $cond: [{ $eq: ['$type', 'Sell'] }, '$totalAmount', 0] } },
+          _id: { companyId: '$companyId', exchange: '$bseNseFlag' },
+          totalBuyQty: { $sum: { $cond: [{ $eq: ['$type', 'Purchase'] }, '$noOfShares', 0] } },
+          totalSellQty: { $sum: { $cond: [{ $eq: ['$type', 'Sales'] }, '$noOfShares', 0] } },
+          totalBuyAmount: { $sum: { $cond: [{ $eq: ['$type', 'Purchase'] }, '$amount', 0] } },
+          totalSellAmount: { $sum: { $cond: [{ $eq: ['$type', 'Sales'] }, '$amount', 0] } },
         },
       },
       { $addFields: { netQuantity: { $subtract: ['$totalBuyQty', '$totalSellQty'] } } },
       { $match: { netQuantity: { $gt: 0 } } },
-      { $lookup: { from: 'companies', localField: '_id', foreignField: '_id', as: 'company' } },
-      { $unwind: '$company' },
+      { $lookup: { from: 'companies', localField: '_id.companyId', foreignField: '_id', as: 'company' } },
+      { $unwind: { path: '$company', preserveNullAndEmptyArrays: true } },
       {
         $project: {
-          company: { name: 1, symbol: 1, sector: 1 },
+          company: { name: 1, symbol: '$code', sector: 1 },
+          exchange: '$_id.exchange',
           netQuantity: 1,
           totalBuyAmount: 1,
           realizedPnL: { $subtract: ['$totalSellAmount', '$totalBuyAmount'] },
@@ -557,8 +558,8 @@ const getMyProfitLoss = async (req, res) => {
         {
           $group: {
             _id: null,
-            shareBuy: { $sum: { $cond: [{ $eq: ['$type', 'Buy'] }, '$totalAmount', 0] } },
-            shareSell: { $sum: { $cond: [{ $eq: ['$type', 'Sell'] }, '$totalAmount', 0] } },
+            shareBuy: { $sum: { $cond: [{ $eq: ['$type', 'Purchase'] }, '$amount', 0] } },
+            shareSell: { $sum: { $cond: [{ $eq: ['$type', 'Sales'] }, '$amount', 0] } },
           },
         },
       ]),

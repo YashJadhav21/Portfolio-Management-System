@@ -53,10 +53,10 @@ function ShareForm({ data, onSubmit, isLoading, onCancel }) {
   useEffect(() => {
     Promise.all([
       investorService.getAll({ limit: 200 }),
-      companyService.getAll({ limit: 200 }),
+      companyService.getAll({ limit: 2000 }),
     ]).then(([inv, comp]) => {
       setInvestors(inv.data.data || []);
-      setCompanies(comp.data.data || []);
+      setCompanies((comp.data.data || []).filter(c => c.flag === 'C'));
     });
   }, []);
 
@@ -153,7 +153,11 @@ function ShareForm({ data, onSubmit, isLoading, onCancel }) {
           <label className="text-sm font-medium text-slate-300 block mb-1.5">Scrip Code *</label>
           <select {...register("companyId")} className={ic}>
             <option value="">Select Scrip Name...</option>
-            {companies.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
+            {companies.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.code ? `${c.code} — ` : ""}{c.name}
+              </option>
+            ))}
           </select>
           {errors.companyId && <p className="text-red-400 text-xs mt-1">{errors.companyId.message}</p>}
         </div>

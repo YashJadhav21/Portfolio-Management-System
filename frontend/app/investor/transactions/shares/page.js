@@ -36,7 +36,8 @@ function ShareForm({ data, onSubmit, isLoading, onCancel }) {
   const [companies, setCompanies] = useState([]);
 
   useEffect(() => {
-    companyService.getAll({ limit: 200 }).then((r) => setCompanies(r.data.data || []));
+    // Load ALL companies for Purchase (any company can be purchased)
+    companyService.getAll({ limit: 2000 }).then((r) => setCompanies(r.data.data || []));
   }, []);
 
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({
@@ -113,7 +114,11 @@ function ShareForm({ data, onSubmit, isLoading, onCancel }) {
           <label className="text-sm font-medium text-slate-300 block mb-1.5">Scrip Code *</label>
           <select {...register("companyId")} className={ic}>
             <option value="">Select Scrip Name...</option>
-            {companies.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
+            {companies.filter(c => c.flag === 'C').map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.code ? `${c.code} — ` : ""}{c.name}
+              </option>
+            ))}
           </select>
           {errors.companyId && <p className="text-red-400 text-xs mt-1">{errors.companyId.message}</p>}
         </div>

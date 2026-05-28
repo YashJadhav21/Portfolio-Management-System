@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   investorPortfolio, amcWise, fdMaturity,
-  mfHoldings, profitLoss, assetAllocation,
+  mfHoldings, shareHoldings, profitLoss, assetAllocation,
 } = require('../controllers/report.controller');
 const { protect } = require('../middleware/auth.middleware');
 
@@ -11,6 +11,7 @@ router.get('/investor-portfolio', investorPortfolio);
 router.get('/amc-wise', amcWise);
 router.get('/fd-maturity', fdMaturity);
 router.get('/mf-holdings', mfHoldings);
+router.get('/share-holdings', shareHoldings);
 router.get('/profit-loss', profitLoss);
 router.get('/asset-allocation', assetAllocation);
 

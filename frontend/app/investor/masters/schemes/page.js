@@ -19,39 +19,94 @@ const schema = z.object({
 const ic = "w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500";
 
 function SchemeForm({ data, onSubmit, isLoading, onCancel }) {
-  const [amcs, setAmcs] = useState([]);
-  const [selectedAmc, setSelectedAmc] = useState(null);
+  const [amcs, setAmcs]                     = useState([]);
+  const [selectedAmc, setSelectedAmc]       = useState(null);
+  const [amcSchemes, setAmcSchemes]         = useState([]);
+  const [autoFilledIsin, setAutoFilledIsin] = useState("");
+  const [isEditMode, setIsEditMode]         = useState(false);
 
   useEffect(() => {
     amcService.getAll({ limit: 500 }).then((r) => setAmcs(r.data.data || []));
   }, []);
 
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: { amcId: "", schemeCode: "", name: "", isin: "", mfType: "", dgFlag: "" },
   });
 
   const watchedAmcId = watch("amcId");
 
+  // When AMC changes: update selectedAmc, load schemes for that AMC
   useEffect(() => {
     const amc = amcs.find((a) => a._id === watchedAmcId);
     setSelectedAmc(amc || null);
-  }, [watchedAmcId, amcs]);
+
+    if (watchedAmcId && !isEditMode) {
+      schemeService.getAll({ amcId: watchedAmcId, limit: 1000 }).then((r) => {
+        const all = r.data.data || [];
+        const filtered = all.filter((s) => (s.amcId?._id || s.amcId) === watchedAmcId);
+        setAmcSchemes(filtered.length ? filtered : all);
+      });
+      setValue("schemeCode", "");
+      setValue("name", "");
+      setValue("isin", "");
+      setAutoFilledIsin("");
+    }
+  }, [watchedAmcId, amcs, isEditMode, setValue]);
 
   useEffect(() => {
     if (data) {
-      reset({ amcId: data.amcId?._id || data.amcId || "", schemeCode: data.schemeCode || "", name: data.name, isin: data.isin || "", mfType: data.mfType || "", dgFlag: data.dgFlag || "" });
-      const amc = amcs.find((a) => a._id === (data.amcId?._id || data.amcId));
+      setIsEditMode(true);
+      const amcId = data.amcId?._id || data.amcId || "";
+      reset({
+        amcId,
+        schemeCode: data.schemeCode || "",
+        name: data.name || "",
+        isin: data.isin || "",
+        mfType: data.mfType || "",
+        dgFlag: data.dgFlag || "",
+      });
+      const amc = amcs.find((a) => a._id === amcId);
       setSelectedAmc(amc || null);
+      setAutoFilledIsin(data.isin || "");
+      if (amcId) {
+        schemeService.getAll({ amcId, limit: 1000 }).then((r) => {
+          const all = r.data.data || [];
+          const filtered = all.filter((s) => (s.amcId?._id || s.amcId) === amcId);
+          setAmcSchemes(filtered.length ? filtered : all);
+        });
+      }
     } else {
+      setIsEditMode(false);
       reset({ amcId: "", schemeCode: "", name: "", isin: "", mfType: "", dgFlag: "" });
       setSelectedAmc(null);
+      setAmcSchemes([]);
+      setAutoFilledIsin("");
     }
   }, [data, reset, amcs]);
+
+  const handleSchemeSelect = (e) => {
+    const schemeId = e.target.value;
+    if (!schemeId) {
+      setValue("schemeCode", "");
+      setValue("name", "");
+      setValue("isin", "");
+      setAutoFilledIsin("");
+      return;
+    }
+    const scheme = amcSchemes.find((s) => s._id === schemeId);
+    if (scheme) {
+      setValue("schemeCode", scheme.schemeCode || "");
+      setValue("name", scheme.name || "");
+      setValue("isin", scheme.isin || "");
+      setAutoFilledIsin(scheme.isin || "");
+    }
+  };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* AMC Code */}
         <div>
           <label className="text-sm font-medium text-slate-300 block mb-1.5">AMC Code *</label>
           <select {...register("amcId")} className={ic}>
@@ -60,23 +115,69 @@ function SchemeForm({ data, onSubmit, isLoading, onCancel }) {
           </select>
           {errors.amcId && <p className="text-red-400 text-xs mt-1">{errors.amcId.message}</p>}
         </div>
+
+        {/* AMC Name — auto-filled */}
         <div>
           <label className="text-sm font-medium text-slate-300 block mb-1.5">AMC Name</label>
-          <input value={selectedAmc?.name || ""} readOnly className={`${ic} opacity-60 cursor-not-allowed`} placeholder="Auto-filled from AMC" />
+          <input value={selectedAmc?.name || ""} readOnly className={`${ic} opacity-60 cursor-not-allowed`} placeholder="Auto-filled from AMC selection" />
         </div>
+
+        {/* Scheme picker — auto-fills Code, Name, ISIN */}
+        <div className="sm:col-span-2">
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">
+            Scheme Code{" "}
+            <span className="text-slate-500 text-xs">
+              {amcSchemes.length > 0 ? `(${amcSchemes.length} schemes available)` : watchedAmcId ? "(loading...)" : "(select AMC first)"}
+            </span>
+          </label>
+          <select
+            onChange={handleSchemeSelect}
+            disabled={!watchedAmcId}
+            className={`${ic} ${!watchedAmcId ? "opacity-50 cursor-not-allowed" : ""}`}
+            defaultValue=""
+          >
+            <option value="">
+              {watchedAmcId
+                ? amcSchemes.length > 0
+                  ? "Select scheme to auto-fill Name & ISIN..."
+                  : "No schemes found for this AMC"
+                : "Select AMC first..."}
+            </option>
+            {amcSchemes.map((s) => (
+              <option key={s._id} value={s._id}>
+                {s.schemeCode ? `${s.schemeCode} — ${s.name}` : s.name}
+              </option>
+            ))}
+          </select>
+          <p className="text-slate-500 text-xs mt-1">Selecting a scheme auto-fills the fields below. You can also type manually.</p>
+        </div>
+
+        {/* Scheme Code value (editable) */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Scheme Code</label>
-          <input {...register("schemeCode")} className={ic} placeholder="Actual Scheme Code" />
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Scheme Code (value)</label>
+          <input {...register("schemeCode")} className={ic} placeholder="Auto-filled or enter manually" />
         </div>
+
+        {/* Scheme Name */}
         <div>
           <label className="text-sm font-medium text-slate-300 block mb-1.5">Scheme Name *</label>
-          <input {...register("name")} className={ic} placeholder="Actual Scheme Name" />
+          <input {...register("name")} className={ic} placeholder="Auto-filled or enter manually" />
           {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name.message}</p>}
         </div>
+
+        {/* ISIN — auto-filled + editable */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">ISIN</label>
-          <input {...register("isin")} className={ic} placeholder="Actual Value" />
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">
+            ISIN <span className="text-slate-500 text-xs">(auto-filled from scheme)</span>
+          </label>
+          <input
+            {...register("isin")}
+            className={`${ic} ${autoFilledIsin ? "border-emerald-500/50 bg-emerald-500/5" : ""}`}
+            placeholder="Auto-filled or enter manually"
+          />
         </div>
+
+        {/* Type of MF */}
         <div>
           <label className="text-sm font-medium text-slate-300 block mb-1.5">Type of MF</label>
           <select {...register("mfType")} className={ic}>
@@ -86,6 +187,8 @@ function SchemeForm({ data, onSubmit, isLoading, onCancel }) {
             <option value="Flexi Cap">Flexi Cap</option>
           </select>
         </div>
+
+        {/* D / G Flag */}
         <div>
           <label className="text-sm font-medium text-slate-300 block mb-1.5">D / G Flag</label>
           <select {...register("dgFlag")} className={ic}>
@@ -95,6 +198,7 @@ function SchemeForm({ data, onSubmit, isLoading, onCancel }) {
           </select>
         </div>
       </div>
+
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 bg-slate-800 hover:bg-slate-700 transition-colors">Cancel</button>
         <button type="submit" disabled={isLoading} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
@@ -120,11 +224,12 @@ export default function InvestorSchemesPage() {
   return (
     <CrudPage
       title="Scheme Master"
-      description="Mutual fund schemes — AMC Code, Scheme Code, ISIN, Type of MF, D/G Flag"
+      description="Mutual fund schemes — select AMC to auto-fill Scheme Code, Name & ISIN"
       service={schemeService}
       columns={columns}
       FormComponent={SchemeForm}
       searchPlaceholder="Search schemes..."
+      modalSize="lg"
     />
   );
 }

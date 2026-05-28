@@ -119,12 +119,12 @@ const columns = [
 export default function SubcategoriesPage() {
   return (
     <CrudPage
-      title="Sub-Category Master"
-      description="Manage subcategories — chained to Fixed Income, Mutual Funds, Shares, Insurance"
+      title="Asset Sub Class"
+      description="Manage asset sub classes — chained to Fixed Income, Mutual Funds, Shares, Insurance"
       service={subcategoryService}
       columns={columns}
       FormComponent={SubcategoryForm}
-      searchPlaceholder="Search subcategories..."
+      searchPlaceholder="Search asset sub classes..."
     />
   );
 }

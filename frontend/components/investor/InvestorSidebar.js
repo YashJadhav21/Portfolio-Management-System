@@ -49,8 +49,8 @@ const investorNavItems = [
     children: [
       { label: "Group (Family) Master", href: "/investor/masters/groups", icon: Users },
       { label: "User (Investor) Master", href: "/investor/masters/investors", icon: Users },
-      { label: "Category Master", href: "/investor/masters/categories", icon: FolderTree },
-      { label: "Sub-Category Master", href: "/investor/masters/subcategories", icon: Tags },
+      { label: "Asset Class Master", href: "/investor/masters/categories", icon: FolderTree },
+      { label: "Asset Sub Class Master", href: "/investor/masters/subcategories", icon: Tags },
       { label: "Company / Bank Master", href: "/investor/masters/companies", icon: Building2 },
       { label: "AMC Master", href: "/investor/masters/amcs", icon: Landmark },
       { label: "Scheme Master", href: "/investor/masters/schemes", icon: ListTree },

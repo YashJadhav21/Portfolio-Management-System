@@ -19,6 +19,18 @@ const FI_SUBCATEGORIES = [
   "BNFD", "CNFD", "BCFD", "CCFD", "CD", "NCD", "PMIS", "PTD", "Insurance Annuity",
 ];
 
+// Per screenshot: BNFD/BCFD→Banks, CNFD/CCFD/CD/NCD→Companies, PMIS/PTD→Post Office
+const BANK_SUBCATS    = new Set(["BNFD", "BCFD"]);
+const COMPANY_SUBCATS = new Set(["CNFD", "CCFD", "CD", "NCD"]);
+const POST_SUBCATS    = new Set(["PMIS", "PTD"]);
+
+function filterCompaniesBySubcat(all, subcat) {
+  if (BANK_SUBCATS.has(subcat))    return all.filter(c => c.flag === 'B');
+  if (COMPANY_SUBCATS.has(subcat)) return all.filter(c => c.flag === 'C');
+  if (POST_SUBCATS.has(subcat))    return all.filter(c => c.name?.toLowerCase().includes('post'));
+  return all;
+}
+
 const schema = z.object({
   effectiveDate:     z.string().min(1, "Effective Date is required"),
   subcategoryCode:   z.string().min(1, "Sub-Category is required"),
@@ -35,14 +47,15 @@ const schema = z.object({
 const ic = "w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500";
 
 function FDForm({ data, onSubmit, isLoading, onCancel }) {
-  const [companies, setCompanies] = useState([]);
+  const [allCompanies, setAllCompanies] = useState([]);
+  const [filteredCompanies, setFilteredCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
 
   useEffect(() => {
-    companyService.getAll({ limit: 200 }).then((r) => setCompanies(r.data.data || []));
+    companyService.getAll({ limit: 2000 }).then((r) => setAllCompanies(r.data.data || []));
   }, []);
 
-  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
       effectiveDate: new Date().toISOString().split("T")[0],
@@ -54,11 +67,19 @@ function FDForm({ data, onSubmit, isLoading, onCancel }) {
   });
 
   const watchedCompanyId = watch("companyId");
+  const watchedSubcat    = watch("subcategoryCode");
+
+  // Filter companies based on subcategory selection
+  useEffect(() => {
+    setFilteredCompanies(filterCompaniesBySubcat(allCompanies, watchedSubcat));
+    setValue("companyId", "");
+    setSelectedCompany(null);
+  }, [watchedSubcat, allCompanies, setValue]);
 
   useEffect(() => {
-    const co = companies.find((c) => c._id === watchedCompanyId);
+    const co = allCompanies.find((c) => c._id === watchedCompanyId);
     setSelectedCompany(co || null);
-  }, [watchedCompanyId, companies]);
+  }, [watchedCompanyId, allCompanies]);
 
   useEffect(() => {
     if (data) {
@@ -74,7 +95,7 @@ function FDForm({ data, onSubmit, isLoading, onCancel }) {
         maturityDate: data.maturityDate?.split("T")[0] || "",
         maturityAmount: data.maturityAmount || "",
       });
-      const co = companies.find((c) => c._id === (data.companyId?._id || data.companyId));
+      const co = allCompanies.find((c) => c._id === (data.companyId?._id || data.companyId));
       setSelectedCompany(co || null);
     } else {
       reset({
@@ -86,7 +107,7 @@ function FDForm({ data, onSubmit, isLoading, onCancel }) {
       });
       setSelectedCompany(null);
     }
-  }, [data, reset, companies]);
+  }, [data, reset, allCompanies]);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -98,20 +119,24 @@ function FDForm({ data, onSubmit, isLoading, onCancel }) {
           {errors.effectiveDate && <p className="text-red-400 text-xs mt-1">{errors.effectiveDate.message}</p>}
         </div>
 
-        {/* Sub-Category Code */}
+        {/* Asset Sub Class Code */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Sub-Category Code *</label>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Asset Sub Class Code *</label>
           <select {...register("subcategoryCode")} className={ic}>
             {FI_SUBCATEGORIES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
 
-        {/* Company / Bank Code */}
+        {/* Company / Bank Code — filtered by asset sub class */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Company / Bank Code *</label>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">
+            Company / Bank Code * <span className="text-slate-500 text-xs">(filtered by sub class)</span>
+          </label>
           <select {...register("companyId")} className={ic}>
-            <option value="">Select Company / Bank Name...</option>
-            {companies.map((c) => (
+            <option value="">
+              {filteredCompanies.length === 0 ? "No matches for this sub class" : "Select Company / Bank Name..."}
+            </option>
+            {filteredCompanies.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.code ? `${c.code} — ` : ""}{c.name} ({c.flag === "B" ? "Bank" : "Company"})
               </option>

@@ -72,6 +72,7 @@ const REPORTS = [
   { id: "fd-maturity", label: "FD Maturity Report", description: "Your fixed deposits sorted by maturity date", icon: "📅" },
   { id: "profit-loss", label: "Profit & Loss", description: "Realized P&L from your MF redemptions and share sales", icon: "💹" },
   { id: "mf-holdings", label: "MF Holdings", description: "Your current mutual fund holdings with net units", icon: "📊" },
+  { id: "share-holdings", label: "Share Holdings", description: "Your current share holdings and realized P&L", icon: "📈" },
 ];
 
 const COLUMNS = {
@@ -100,6 +101,14 @@ const COLUMNS = {
     { key: "currentValue", label: "Current Value", render: (v) => <span className="font-semibold text-blue-400">{formatCurrency(v)}</span> },
     { key: "_gl", label: "Gain/Loss", render: (_, row) => { const g = (row.currentValue || 0) - (row.totalInvested || 0); return <span className={g >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>{g >= 0 ? "+" : ""}{formatCurrency(g)}</span>; } },
   ],
+  "share-holdings": [
+    { key: "company", label: "Scrip / Company", render: (v) => <span className="font-semibold text-blue-400">{v?.name || "—"}</span> },
+    { key: "exchange", label: "Exchange", render: (v) => <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${v === "BSE" ? "text-orange-400 bg-orange-500/10" : "text-blue-400 bg-blue-500/10"}`}>{v}</span> },
+    { key: "netQuantity", label: "Net Shares", render: (v) => <span className="font-bold text-slate-100">{Number(v).toLocaleString("en-IN")}</span> },
+    { key: "avgBuyPrice", label: "Avg Buy Price", render: (v) => formatCurrency(v) },
+    { key: "totalBuyAmount", label: "Total Invested", render: (v) => formatCurrency(v) },
+    { key: "realizedPnL", label: "Realized P&L", render: (v) => <span className={v >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>{v >= 0 ? "+" : ""}{formatCurrency(v)}</span> },
+  ],
 };
 
 async function fetchReport(id, params, service) {
@@ -110,6 +119,7 @@ async function fetchReport(id, params, service) {
       return [res.data.data]; // single object → wrap in array for table
     }
     case "mf-holdings": return (await service.getMFHoldings()).data.data;
+    case "share-holdings": return (await service.getShareHoldings()).data.data;
     default: return [];
   }
 }

@@ -31,6 +31,18 @@ const FI_SUBCATEGORIES = [
   "BNFD", "CNFD", "BCFD", "CCFD", "CD", "NCD", "PMIS", "PTD", "Insurance Annuity",
 ];
 
+// Per image: BNFD/BCFD→Bank Master, CNFD/CCFD/CD/NCD→Company Master, PMIS/PTD→Post Office
+const BANK_SUBCATS    = new Set(["BNFD", "BCFD"]);
+const COMPANY_SUBCATS = new Set(["CNFD", "CCFD", "CD", "NCD"]);
+const POST_SUBCATS    = new Set(["PMIS", "PTD"]);
+
+function filterCompaniesBySubcat(allCompanies, subcat) {
+  if (BANK_SUBCATS.has(subcat))    return allCompanies.filter(c => c.flag === 'B');
+  if (COMPANY_SUBCATS.has(subcat)) return allCompanies.filter(c => c.flag === 'C');
+  if (POST_SUBCATS.has(subcat))    return allCompanies.filter(c => c.name?.toLowerCase().includes('post'));
+  return allCompanies; // Insurance Annuity → all
+}
+
 const schema = z.object({
   investorId:        z.string().min(1, "Investor is required"),
   effectiveDate:     z.string().min(1, "Effective Date is required"),
@@ -49,16 +61,17 @@ const ic = "w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.
 
 function FDForm({ data, onSubmit, isLoading, onCancel }) {
   const [investors, setInvestors] = useState([]);
-  const [companies, setCompanies] = useState([]);
+  const [allCompanies, setAllCompanies] = useState([]);
+  const [filteredCompanies, setFilteredCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
 
   useEffect(() => {
     Promise.all([
       investorService.getAll({ limit: 200 }),
-      companyService.getAll({ limit: 200 }),
+      companyService.getAll({ limit: 2000 }),
     ]).then(([inv, comp]) => {
       setInvestors(inv.data.data || []);
-      setCompanies(comp.data.data || []);
+      setAllCompanies(comp.data.data || []);
     });
   }, []);
 
@@ -73,12 +86,22 @@ function FDForm({ data, onSubmit, isLoading, onCancel }) {
     },
   });
 
-  const watchedCompanyId = watch("companyId");
+  const watchedCompanyId  = watch("companyId");
+  const watchedSubcat     = watch("subcategoryCode");
 
+  // Dynamically filter companies based on selected subcategory
   useEffect(() => {
-    const co = companies.find((c) => c._id === watchedCompanyId);
+    setFilteredCompanies(filterCompaniesBySubcat(allCompanies, watchedSubcat));
+    // Reset company selection when subcategory changes
+    setValue("companyId", "");
+    setSelectedCompany(null);
+  }, [watchedSubcat, allCompanies, setValue]);
+
+  // Update displayed company name when company selection changes
+  useEffect(() => {
+    const co = allCompanies.find((c) => c._id === watchedCompanyId);
     setSelectedCompany(co || null);
-  }, [watchedCompanyId, companies]);
+  }, [watchedCompanyId, allCompanies]);
 
   useEffect(() => {
     if (data) {
@@ -95,7 +118,7 @@ function FDForm({ data, onSubmit, isLoading, onCancel }) {
         maturityDate: data.maturityDate?.split("T")[0] || "",
         maturityAmount: data.maturityAmount || "",
       });
-      const co = companies.find((c) => c._id === (data.companyId?._id || data.companyId));
+      const co = allCompanies.find((c) => c._id === (data.companyId?._id || data.companyId));
       setSelectedCompany(co || null);
     } else {
       reset({
@@ -107,7 +130,7 @@ function FDForm({ data, onSubmit, isLoading, onCancel }) {
       });
       setSelectedCompany(null);
     }
-  }, [data, reset, companies]);
+  }, [data, reset, allCompanies]);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -129,21 +152,25 @@ function FDForm({ data, onSubmit, isLoading, onCancel }) {
           {errors.effectiveDate && <p className="text-red-400 text-xs mt-1">{errors.effectiveDate.message}</p>}
         </div>
 
-        {/* Sub-Category Code */}
+        {/* Asset Sub Class Code */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Sub-Category Code *</label>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Asset Sub Class Code *</label>
           <select {...register("subcategoryCode")} className={ic}>
             {FI_SUBCATEGORIES.map((s) => <option key={s} value={s}>{s}</option>)}
           </select>
           {errors.subcategoryCode && <p className="text-red-400 text-xs mt-1">{errors.subcategoryCode.message}</p>}
         </div>
 
-        {/* Company / Bank Code → shows Company / Bank Name */}
+        {/* Company / Bank Code — filtered by subcategory */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Company / Bank Code *</label>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">
+            Company / Bank Code * <span className="text-slate-500 text-xs">(filtered by sub class)</span>
+          </label>
           <select {...register("companyId")} className={ic}>
-            <option value="">Select Company / Bank Name...</option>
-            {companies.map((c) => (
+            <option value="">
+              {filteredCompanies.length === 0 ? "No matches for this sub class" : "Select Company / Bank Name..."}
+            </option>
+            {filteredCompanies.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.code ? `${c.code} — ` : ""}{c.name} ({c.flag === "B" ? "Bank" : "Company"})
               </option>

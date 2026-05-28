@@ -38,6 +38,7 @@ function MFForm({ data, onSubmit, isLoading, onCancel }) {
   const [investors, setInvestors] = useState([]);
   const [amcs, setAmcs] = useState([]);
   const [schemes, setSchemes] = useState([]);
+  const [schemeIsin, setSchemeIsin] = useState("");
 
   useEffect(() => {
     Promise.all([
@@ -64,21 +65,29 @@ function MFForm({ data, onSubmit, isLoading, onCancel }) {
   // Load schemes when AMC changes
   useEffect(() => {
     if (watchedAmcId) {
-      schemeService.getAll({ limit: 200 }).then((r) => {
-        const filtered = (r.data.data || []).filter(
+      schemeService.getAll({ amcId: watchedAmcId, limit: 1000 }).then((r) => {
+        const all = r.data.data || [];
+        const filtered = all.filter(
           (s) => (s.amcId?._id || s.amcId) === watchedAmcId
         );
-        setSchemes(filtered);
+        setSchemes(filtered.length ? filtered : all);
       });
       setValue("schemeId", "");
+      setSchemeIsin("");
     }
   }, [watchedAmcId, setValue]);
 
-  // Auto-fill NAV when scheme selected
+  // Auto-fill ISIN (and NAV) when scheme selected
   const handleSchemeChange = (e) => {
     const sid = e.target.value;
+    setValue("schemeId", sid);
     const scheme = schemes.find((s) => s._id === sid);
-    if (scheme?.nav) setValue("nav", scheme.nav);
+    if (scheme) {
+      if (scheme.isin) setSchemeIsin(scheme.isin);
+      if (scheme.nav) setValue("nav", scheme.nav);
+    } else {
+      setSchemeIsin("");
+    }
   };
 
   useEffect(() => {
@@ -177,7 +186,17 @@ function MFForm({ data, onSubmit, isLoading, onCancel }) {
           {errors.schemeId && <p className="text-red-400 text-xs mt-1">{errors.schemeId.message}</p>}
         </div>
 
-        {/* Type of Mutual Fund: Dividend / Growth */}
+        {/* ISIN — auto-filled from scheme */}
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">ISIN <span className="text-slate-500 text-xs">(auto-filled)</span></label>
+          <input
+            value={schemeIsin}
+            readOnly
+            className={`${ic} opacity-70 cursor-not-allowed`}
+            placeholder="Auto-filled from scheme selection"
+          />
+        </div>
+
         <div>
           <label className="text-sm font-medium text-slate-300 block mb-1.5">Type of Mutual Fund</label>
           <select {...register("mfType")} className={ic}>

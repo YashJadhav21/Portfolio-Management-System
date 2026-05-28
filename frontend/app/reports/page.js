@@ -106,6 +106,12 @@ const REPORTS = [
     icon: "📊",
   },
   {
+    id: "share-holdings",
+    label: "Share Holdings",
+    description: "Current share holdings with quantity, invested amount and exchange",
+    icon: "📈",
+  },
+  {
     id: "profit-loss",
     label: "Profit & Loss",
     description: "Realized P&L from mutual fund redemptions and share sales",
@@ -151,6 +157,23 @@ const COLUMNS = {
       },
     },
   ],
+  "share-holdings": [
+    { key: "investor", label: "Investor", render: (v) => v?.name || "—" },
+    { key: "company", label: "Scrip / Company", render: (v) => <span className="font-semibold text-blue-400">{v?.name || "—"}</span> },
+    { key: "exchange", label: "Exchange", render: (v) => <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${v === "BSE" ? "text-orange-400 bg-orange-500/10" : "text-blue-400 bg-blue-500/10"}`}>{v}</span> },
+    { key: "isin", label: "ISIN", render: (v) => <span className="font-mono text-slate-400 text-xs">{v || "—"}</span> },
+    { key: "netShares", label: "Net Shares", render: (v) => <span className="font-bold text-slate-100">{Number(v).toLocaleString("en-IN")}</span> },
+    { key: "totalInvested", label: "Total Invested", render: (v) => formatCurrency(v) },
+    { key: "currentValue", label: "Current Value", render: (v) => <span className="font-semibold text-blue-400">{formatCurrency(v)}</span> },
+    {
+      key: "_gainLoss",
+      label: "Gain / Loss",
+      render: (_, row) => {
+        const g = (row.currentValue || 0) - (row.totalInvested || 0);
+        return <span className={g >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>{g >= 0 ? "+" : ""}{formatCurrency(g)}</span>;
+      },
+    },
+  ],
   "profit-loss": [
     { key: "investor", label: "Investor" },
     { key: "mfPurchased", label: "MF Purchased", render: (v) => formatCurrency(v) },
@@ -164,10 +187,11 @@ const COLUMNS = {
 // Fetch functions
 async function fetchReport(id, params) {
   switch (id) {
-    case "amc-wise": return (await reportService.amcWise()).data.data;
-    case "fd-maturity": return (await reportService.fdMaturity(params)).data.data;
-    case "mf-holdings": return (await reportService.mfHoldings()).data.data;
-    case "profit-loss": return (await reportService.profitLoss()).data.data;
+    case "amc-wise":       return (await reportService.amcWise()).data.data;
+    case "fd-maturity":    return (await reportService.fdMaturity(params)).data.data;
+    case "mf-holdings":   return (await reportService.mfHoldings()).data.data;
+    case "share-holdings": return (await reportService.shareHoldings()).data.data;
+    case "profit-loss":   return (await reportService.profitLoss()).data.data;
     default: return [];
   }
 }
@@ -183,6 +207,8 @@ function flattenForCSV(reportId, data) {
       return data.map((r) => ({ Investor: r.investorId?.name, Bank: r.bankName, FD_Number: r.fdNumber, Amount: r.amount, Rate: r.interestRate, Tenure: r.tenureMonths, Maturity_Amount: r.maturityAmount, Interest: r.interestEarned, Maturity_Date: formatDate(r.maturityDate), Status: r.status }));
     case "mf-holdings":
       return data.map((r) => ({ Investor: r.investor?.name, AMC: r.amc?.name, Scheme: r.scheme?.name, Net_Units: r.netUnits, Invested: r.totalInvested, Current_Value: r.currentValue }));
+    case "share-holdings":
+      return data.map((r) => ({ Investor: r.investor?.name, Scrip: r.company?.name, Exchange: r.exchange, ISIN: r.isin, Net_Shares: r.netShares, Invested: r.totalInvested, Current_Value: r.currentValue, Gain_Loss: (r.currentValue || 0) - (r.totalInvested || 0) }));
     case "profit-loss":
       return data.map((r) => ({ Investor: r.investor, MF_Purchased: r.mfPurchased, MF_Redeemed: r.mfRedeemed, MF_PnL: r.mfPnL, Shares_PnL: r.sharesPnL, Total_PnL: r.totalPnL }));
     case "asset-allocation":

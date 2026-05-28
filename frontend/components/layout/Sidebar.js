@@ -38,8 +38,8 @@ const navItems = [
     children: [
       { label: "Groups", href: "/masters/groups", icon: Users },
       { label: "Investors", href: "/masters/investors", icon: Users },
-      { label: "Categories", href: "/masters/categories", icon: Tag },
-      { label: "Sub-Categories", href: "/masters/subcategories", icon: Tags },
+      { label: "Asset Class", href: "/masters/categories", icon: Tag },
+      { label: "Asset Sub Class", href: "/masters/subcategories", icon: Tags },
       { label: "Company / Bank", href: "/masters/companies", icon: Building2 },
       { label: "AMCs", href: "/masters/amcs", icon: Landmark },
       { label: "Schemes", href: "/masters/schemes", icon: BookOpen },

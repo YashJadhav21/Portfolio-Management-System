@@ -68,12 +68,12 @@ const columns = [
 export default function CategoriesPage() {
   return (
     <CrudPage
-      title="Categories"
-      description="Asset categories: Fixed Income Securities, Mutual Funds, Shares, Insurance"
+      title="Asset Class"
+      description="Asset classes: Fixed Income Securities, Mutual Funds, Shares, Insurance"
       service={categoryService}
       columns={columns}
       FormComponent={CategoryForm}
-      searchPlaceholder="Search categories..."
+      searchPlaceholder="Search asset classes..."
     />
   );
 }

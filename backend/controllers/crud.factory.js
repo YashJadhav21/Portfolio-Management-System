@@ -5,7 +5,7 @@ const createCRUDController = (Model, populateFields = []) => {
   // GET all with search + pagination
   const getAll = async (req, res) => {
     try {
-      const { page = 1, limit = 10, search = '', status } = req.query;
+      const { page = 1, limit = 10, search = '', status, amcId, categoryId } = req.query;
       const skip = (parseInt(page) - 1) * parseInt(limit);
 
       // Build filter
@@ -17,6 +17,9 @@ const createCRUDController = (Model, populateFields = []) => {
         ];
       }
       if (status) filter.status = status;
+      // ObjectId filters
+      if (amcId) filter.amcId = amcId;
+      if (categoryId) filter.categoryId = categoryId;
 
       let query = Model.find(filter).skip(skip).limit(parseInt(limit)).sort({ createdAt: -1 });
 

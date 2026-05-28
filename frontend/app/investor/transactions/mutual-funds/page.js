@@ -37,6 +37,7 @@ const ic = "w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.
 function MFForm({ data, onSubmit, isLoading, onCancel }) {
   const [amcs, setAmcs] = useState([]);
   const [schemes, setSchemes] = useState([]);
+  const [schemeIsin, setSchemeIsin] = useState("");
 
   useEffect(() => {
     amcService.getAll({ limit: 200 }).then((r) => setAmcs(r.data.data || []));
@@ -56,16 +57,26 @@ function MFForm({ data, onSubmit, isLoading, onCancel }) {
 
   useEffect(() => {
     if (watchedAmcId) {
-      schemeService.getAll({ limit: 200 }).then((r) => {
-        setSchemes((r.data.data || []).filter((s) => (s.amcId?._id || s.amcId) === watchedAmcId));
+      schemeService.getAll({ amcId: watchedAmcId, limit: 1000 }).then((r) => {
+        const all = r.data.data || [];
+        const filtered = all.filter((s) => (s.amcId?._id || s.amcId) === watchedAmcId);
+        setSchemes(filtered.length ? filtered : all);
       });
       setValue("schemeId", "");
+      setSchemeIsin("");
     }
   }, [watchedAmcId, setValue]);
 
   const handleSchemeChange = (e) => {
-    const scheme = schemes.find((s) => s._id === e.target.value);
-    if (scheme?.nav) setValue("nav", scheme.nav);
+    const sid = e.target.value;
+    setValue("schemeId", sid);
+    const scheme = schemes.find((s) => s._id === sid);
+    if (scheme) {
+      if (scheme.isin) setSchemeIsin(scheme.isin);
+      if (scheme.nav) setValue("nav", scheme.nav);
+    } else {
+      setSchemeIsin("");
+    }
   };
 
   useEffect(() => {
@@ -147,6 +158,17 @@ function MFForm({ data, onSubmit, isLoading, onCancel }) {
             {schemes.map((s) => <option key={s._id} value={s._id}>{s.schemeCode ? `${s.schemeCode} — ${s.name}` : s.name}</option>)}
           </select>
           {errors.schemeId && <p className="text-red-400 text-xs mt-1">{errors.schemeId.message}</p>}
+        </div>
+
+        {/* ISIN — auto-filled from scheme */}
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">ISIN <span className="text-slate-500 text-xs">(auto-filled)</span></label>
+          <input
+            value={schemeIsin}
+            readOnly
+            className={`${ic} opacity-70 cursor-not-allowed`}
+            placeholder="Auto-filled from scheme selection"
+          />
         </div>
 
         {/* Type of Mutual Fund */}

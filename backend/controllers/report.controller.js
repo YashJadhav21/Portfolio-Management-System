@@ -189,4 +189,47 @@ const assetAllocation = async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 };
 
-module.exports = { investorPortfolio, amcWise, fdMaturity, mfHoldings, profitLoss, assetAllocation };
+// Share Holdings Report
+const shareHoldings = async (req, res) => {
+  try {
+    const data = await Share.aggregate([
+      {
+        $group: {
+          _id: { investorId: '$investorId', companyId: '$companyId', exchange: '$bseNseFlag' },
+          netShares: {
+            $sum: {
+              $cond: [{ $eq: ['$type', 'Purchase'] }, '$noOfShares',
+                { $multiply: ['$noOfShares', -1] }],
+            },
+          },
+          totalInvested: {
+            $sum: { $cond: [{ $eq: ['$type', 'Purchase'] }, '$amount', 0] },
+          },
+          avgPrice: { $avg: '$price' },
+          isin: { $first: '$isin' },
+        },
+      },
+      { $match: { netShares: { $gt: 0 } } },
+      { $lookup: { from: 'investors', localField: '_id.investorId', foreignField: '_id', as: 'investor' } },
+      { $lookup: { from: 'companies', localField: '_id.companyId', foreignField: '_id', as: 'company' } },
+      { $unwind: { path: '$investor', preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: '$company', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          investor: { _id: '$investor._id', name: '$investor.name' },
+          company: { _id: '$company._id', name: '$company.name' },
+          exchange: '$_id.exchange',
+          isin: 1,
+          netShares: 1,
+          totalInvested: 1,
+          // Approximate current value = netShares * avgPrice (no live price feed)
+          currentValue: { $multiply: ['$netShares', '$avgPrice'] },
+        },
+      },
+      { $sort: { 'investor.name': 1, 'company.name': 1 } },
+    ]);
+    res.json({ success: true, data });
+  } catch (e) { res.status(500).json({ success: false, message: e.message }); }
+};
+
+module.exports = { investorPortfolio, amcWise, fdMaturity, mfHoldings, shareHoldings, profitLoss, assetAllocation };

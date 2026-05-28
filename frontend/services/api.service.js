@@ -88,6 +88,8 @@ export const reportService = {
   amcWise: () => api.get("/reports/amc-wise"),
   fdMaturity: (params) => api.get("/reports/fd-maturity", { params }),
   mfHoldings: () => api.get("/reports/mf-holdings"),
+  shareHoldings: () => api.get("/reports/share-holdings"),
   profitLoss: () => api.get("/reports/profit-loss"),
   assetAllocation: () => api.get("/reports/asset-allocation"),
 };
+
