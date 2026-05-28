@@ -1,26 +1,14 @@
 const mongoose = require('mongoose');
 
+// Scheme Master — AMC Code, AMC Name, Scheme Code, Scheme Name, ISIN, Type of MF, D/G Flag
 const schemeSchema = new mongoose.Schema(
   {
-    code: { type: String, trim: true, unique: true, sparse: true, default: '' },
-    name: { type: String, required: true, trim: true },
-    amcId: { type: mongoose.Schema.Types.ObjectId, ref: 'AMC', required: true },
-    categoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Category', required: true },
-    subcategoryId: { type: mongoose.Schema.Types.ObjectId, ref: 'Subcategory', default: null },
-    schemeType: { type: String, trim: true, default: '' },
-    schemeCategory: { type: String, trim: true, default: '' },
-    schemeNavName: { type: String, trim: true, default: '' },
-    minimumAmount: { type: String, trim: true, default: '' },
-    launchDate: { type: Date, default: null },
-    closureDate: { type: Date, default: null },
-    isin: { type: String, trim: true, default: '' },
-    riskLevel: {
-      type: String,
-      enum: ['Low', 'Moderate', 'High', 'Very High'],
-      default: 'Moderate',
-    },
-    nav: { type: Number, default: 0, min: 0 },
-    status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
+    amcId:      { type: mongoose.Schema.Types.ObjectId, ref: 'AMC', required: true }, // AMC Code (lookup)
+    schemeCode: { type: String, trim: true, default: '' },   // Scheme Code
+    name:       { type: String, required: true, trim: true },// Scheme Name
+    isin:       { type: String, trim: true, default: '' },   // ISIN
+    mfType:     { type: String, trim: true, default: '' },   // Type of MF
+    dgFlag:     { type: String, enum: ['Dividend', 'Growth', ''], default: '' }, // D/G Flag
   },
   { timestamps: true }
 );

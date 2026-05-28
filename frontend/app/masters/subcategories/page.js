@@ -9,9 +9,12 @@ import CrudPage from "@/components/CrudPage";
 
 const schema = z.object({
   categoryId: z.string().min(1, "Category is required"),
+  code: z.string().optional(),
   name: z.string().min(1, "Subcategory name is required"),
   description: z.string().optional(),
 });
+
+const ic = "w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
 
 function SubcategoryForm({ data, onSubmit, isLoading, onCancel }) {
   const [categories, setCategories] = useState([]);
@@ -22,34 +25,38 @@ function SubcategoryForm({ data, onSubmit, isLoading, onCancel }) {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { categoryId: "", name: "", description: "" },
+    defaultValues: { categoryId: "", code: "", name: "", description: "" },
   });
 
   useEffect(() => {
-    if (data) reset({ categoryId: data.categoryId?._id || data.categoryId || "", name: data.name, description: data.description || "" });
-    else reset({ categoryId: "", name: "", description: "" });
+    if (data) reset({ categoryId: data.categoryId?._id || data.categoryId || "", code: data.code || "", name: data.name, description: data.description || "" });
+    else reset({ categoryId: "", code: "", name: "", description: "" });
   }, [data, reset]);
-
-  const inputClass = "w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
         <label className="text-sm font-medium text-slate-300 block mb-1.5">Category *</label>
-        <select {...register("categoryId")} className={inputClass}>
+        <select {...register("categoryId")} className={ic}>
           <option value="">Select category...</option>
           {categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
         </select>
         {errors.categoryId && <p className="text-red-400 text-xs mt-1">{errors.categoryId.message}</p>}
       </div>
-      <div>
-        <label className="text-sm font-medium text-slate-300 block mb-1.5">Subcategory Name *</label>
-        <input {...register("name")} className={inputClass} placeholder="e.g. Large Cap" />
-        {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name.message}</p>}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Sub-Category Code</label>
+          <input {...register("code")} className={ic} placeholder="e.g. BNFD" />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Sub-Category Name *</label>
+          <input {...register("name")} className={ic} placeholder="e.g. BNFD" />
+          {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name.message}</p>}
+        </div>
       </div>
       <div>
         <label className="text-sm font-medium text-slate-300 block mb-1.5">Description</label>
-        <textarea {...register("description")} rows={3} className={`${inputClass} resize-none`} placeholder="Optional description..." />
+        <textarea {...register("description")} rows={2} className={`${ic} resize-none`} placeholder="Optional description..." />
       </div>
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 bg-slate-800 hover:bg-slate-700 transition-colors">Cancel</button>
@@ -63,10 +70,11 @@ function SubcategoryForm({ data, onSubmit, isLoading, onCancel }) {
 }
 
 const columns = [
-  { accessorKey: "categoryId", header: "Category", cell: ({ getValue }) => <span className="text-blue-400">{getValue()?.name || "—"}</span> },
-  { accessorKey: "name", header: "Subcategory", cell: ({ getValue }) => <span className="font-medium text-slate-200">{getValue()}</span> },
+  { accessorKey: "categoryId", header: "Category", cell: ({ getValue }) => <span className="font-semibold text-blue-400">{getValue()?.name || "—"}</span> },
+  { accessorKey: "code", header: "Sub-Cat. Code", cell: ({ getValue }) => <span className="font-mono text-emerald-400 font-semibold">{getValue() || "—"}</span> },
+  { accessorKey: "name", header: "Sub-Category Name", cell: ({ getValue }) => <span className="font-semibold text-slate-100">{getValue()}</span> },
   { accessorKey: "description", header: "Description", cell: ({ getValue }) => <span className="text-slate-400">{getValue() || "—"}</span> },
-  { accessorKey: "createdAt", header: "Created", cell: ({ getValue }) => new Date(getValue()).toLocaleDateString("en-IN") },
+  { accessorKey: "createdAt", header: "Created", cell: ({ getValue }) => <span className="text-slate-400 text-sm">{new Date(getValue()).toLocaleDateString("en-IN")}</span> },
 ];
 
 export default function SubcategoriesPage() {

@@ -1,26 +1,23 @@
 const mongoose = require('mongoose');
 
+// Shares — Purchase / Sales
 const shareSchema = new mongoose.Schema(
   {
-    investorId: { type: mongoose.Schema.Types.ObjectId, ref: 'Investor', required: true },
-    companyId: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
-    transactionDate: { type: Date, required: true },
-    type: { type: String, enum: ['Buy', 'Sell'], required: true },
-    exchange: { type: String, enum: ['BSE', 'NSE'], required: true, default: 'NSE' },
-    quantity: { type: Number, required: true, min: 1 },
-    price: { type: Number, required: true, min: 0 }, // buy or sell price per share
-    brokerage: { type: Number, default: 0, min: 0 },
-    // Calculated
-    totalAmount: { type: Number, default: 0 },
-    notes: { type: String, default: '' },
+    investorId:       { type: mongoose.Schema.Types.ObjectId, ref: 'Investor', required: true },
+    effectiveDate:    { type: Date, required: true },             // Effective Date
+    bseNseFlag:       { type: String, enum: ['BSE', 'NSE'], required: true }, // BSE / NSE Flag
+    companyId:        { type: mongoose.Schema.Types.ObjectId, ref: 'Company' }, // Scrip Code → Scrip Name
+    isin:             { type: String, trim: true, default: '' },  // ISIN
+    sector:           { type: String, trim: true, default: '' },  // Sector
+    type:             { type: String, enum: ['Purchase', 'Sales'], required: true },
+    jointHolder1:     { type: String, trim: true, default: '' },  // Joint Holder 1
+    jointHolder2:     { type: String, trim: true, default: '' },  // Joint Holder 2
+    amount:           { type: Number, default: 0 },               // Amount Invested
+    firstDividendDate:{ type: Date, default: null },             // First Dividend Date
+    price:            { type: Number, default: 0 },               // Price per share
+    noOfShares:       { type: Number, default: 0 },               // No. of Shares
   },
   { timestamps: true }
 );
-
-// Auto-calculate totalAmount before save
-shareSchema.pre('save', function (next) {
-  this.totalAmount = this.quantity * this.price + this.brokerage;
-  next();
-});
 
 module.exports = mongoose.model('Share', shareSchema);

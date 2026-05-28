@@ -1,70 +1,76 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { companyService } from "@/services/api.service";
 import CrudPage from "@/components/CrudPage";
-import StatusBadge from "@/components/ui/StatusBadge";
+
+/* ── Screenshot fields:
+   Company / Bank Code
+   Company / Bank Name
+   Company / Bank Flag   (C = Company, B = Bank)
+   ISIN                  (only if Flag = 'C')
+   Sector
+*/
 
 const schema = z.object({
-  name: z.string().min(1, "Company name is required"),
-  symbol: z.string().min(1, "Stock symbol is required"),
-  exchange: z.enum(["BSE", "NSE", "Both"]),
+  code:   z.string().optional(),
+  name:   z.string().min(1, "Company / Bank Name is required"),
+  flag:   z.enum(["C", "B"]),
+  isin:   z.string().optional(),
   sector: z.string().optional(),
-  industry: z.string().optional(),
-  status: z.enum(["Active", "Inactive"]),
 });
 
+const ic = "w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+
 function CompanyForm({ data, onSubmit, isLoading, onCancel }) {
-  const { register, handleSubmit, reset, formState: { errors } } = useForm({
+  const { register, handleSubmit, reset, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { name: "", symbol: "", exchange: "Both", sector: "", industry: "", status: "Active" },
+    defaultValues: { code: "", name: "", flag: "C", isin: "", sector: "" },
   });
 
-  useEffect(() => {
-    if (data) reset({ name: data.name, symbol: data.symbol, exchange: data.exchange || "Both", sector: data.sector || "", industry: data.industry || "", status: data.status });
-    else reset({ name: "", symbol: "", exchange: "Both", sector: "", industry: "", status: "Active" });
-  }, [data, reset]);
+  const watchedFlag = watch("flag");
 
-  const inputClass = "w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+  useEffect(() => {
+    if (data) reset({ code: data.code || "", name: data.name, flag: data.flag || "C", isin: data.isin || "", sector: data.sector || "" });
+    else reset({ code: "", name: "", flag: "C", isin: "", sector: "" });
+  }, [data, reset]);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Company / Bank Code */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Company Name *</label>
-          <input {...register("name")} className={inputClass} placeholder="e.g. Reliance Industries" />
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Company / Bank Code</label>
+          <input {...register("code")} className={ic} placeholder="e.g. CB-001" />
+        </div>
+        {/* Company / Bank Name */}
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Company / Bank Name *</label>
+          <input {...register("name")} className={ic} placeholder="e.g. Reliance Industries / SBI" />
           {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name.message}</p>}
         </div>
+        {/* Company / Bank Flag */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Stock Symbol *</label>
-          <input {...register("symbol")} className={inputClass} placeholder="e.g. RELIANCE" style={{ textTransform: "uppercase" }} />
-          {errors.symbol && <p className="text-red-400 text-xs mt-1">{errors.symbol.message}</p>}
-        </div>
-        <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Exchange *</label>
-          <select {...register("exchange")} className={inputClass}>
-            <option value="BSE">BSE</option>
-            <option value="NSE">NSE</option>
-            <option value="Both">Both (BSE &amp; NSE)</option>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Company / Bank Flag *</label>
+          <select {...register("flag")} className={ic}>
+            <option value="C">C — Company</option>
+            <option value="B">B — Bank</option>
           </select>
         </div>
-        <div>
+        {/* ISIN — only if Flag = C */}
+        {watchedFlag === "C" && (
+          <div>
+            <label className="text-sm font-medium text-slate-300 block mb-1.5">ISIN <span className="text-slate-500 text-xs">(If Flag = C)</span></label>
+            <input {...register("isin")} className={ic} placeholder="e.g. INE002A01018" />
+          </div>
+        )}
+        {/* Sector */}
+        <div className={watchedFlag !== "C" ? "sm:col-span-2" : ""}>
           <label className="text-sm font-medium text-slate-300 block mb-1.5">Sector</label>
-          <input {...register("sector")} className={inputClass} placeholder="e.g. Energy" />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Industry</label>
-          <input {...register("industry")} className={inputClass} placeholder="e.g. Oil &amp; Gas" />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Status</label>
-          <select {...register("status")} className={inputClass}>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </select>
+          <input {...register("sector")} className={ic} placeholder="Actual Sector Name" />
         </div>
       </div>
       <div className="flex gap-3 pt-2">
@@ -79,30 +85,28 @@ function CompanyForm({ data, onSubmit, isLoading, onCancel }) {
 }
 
 const columns = [
-  { accessorKey: "name", header: "Company Name", cell: ({ getValue }) => <span className="font-medium text-slate-200">{getValue()}</span> },
-  { accessorKey: "symbol", header: "Symbol", cell: ({ getValue }) => <span className="font-mono text-blue-400 font-semibold">{getValue()}</span> },
+  { accessorKey: "code", header: "Code", cell: ({ getValue }) => <span className="font-mono text-blue-400 font-semibold">{getValue() || "—"}</span> },
+  { accessorKey: "name", header: "Company / Bank Name", cell: ({ getValue }) => <span className="font-semibold text-slate-100">{getValue()}</span> },
   {
-    accessorKey: "exchange", header: "Exchange",
+    accessorKey: "flag", header: "Flag",
     cell: ({ getValue }) => {
-      const ex = getValue() || "—";
-      const color = ex === "BSE" ? "text-orange-400 bg-orange-500/10" : ex === "NSE" ? "text-blue-400 bg-blue-500/10" : "text-purple-400 bg-purple-500/10";
-      return <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${color}`}>{ex}</span>;
+      const f = getValue();
+      return <span className={`text-xs font-bold px-2 py-0.5 rounded-lg ${f === "C" ? "text-blue-400 bg-blue-500/10" : "text-emerald-400 bg-emerald-500/10"}`}>{f === "C" ? "C — Company" : "B — Bank"}</span>;
     }
   },
+  { accessorKey: "isin", header: "ISIN", cell: ({ getValue }) => <span className="font-mono text-slate-300 text-xs">{getValue() || "—"}</span> },
   { accessorKey: "sector", header: "Sector", cell: ({ getValue }) => <span className="text-slate-400">{getValue() || "—"}</span> },
-  { accessorKey: "industry", header: "Industry", cell: ({ getValue }) => <span className="text-slate-400">{getValue() || "—"}</span> },
-  { accessorKey: "status", header: "Status", cell: ({ getValue }) => <StatusBadge status={getValue()} /> },
 ];
 
 export default function CompaniesPage() {
   return (
     <CrudPage
-      title="Companies"
-      description="Manage listed companies for share transactions"
+      title="Company / Bank Master"
+      description="Companies (C) and Banks (B) — ISIN shown for Companies only"
       service={companyService}
       columns={columns}
       FormComponent={CompanyForm}
-      searchPlaceholder="Search companies..."
+      searchPlaceholder="Search companies / banks..."
     />
   );
 }

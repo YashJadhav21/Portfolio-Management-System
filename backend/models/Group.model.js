@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const groupSchema = new mongoose.Schema(
   {
+    code: { type: String, trim: true, default: '' },
     name: { type: String, required: true, trim: true },
     description: { type: String, trim: true, default: '' },
     status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },

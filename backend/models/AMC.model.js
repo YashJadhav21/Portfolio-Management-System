@@ -1,13 +1,10 @@
 const mongoose = require('mongoose');
 
+// AMC Master — AMC Code + AMC Name only
 const amcSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true, trim: true, unique: true },
-    registrationNo: { type: String, trim: true, default: '' },
-    email: { type: String, lowercase: true, trim: true, default: '' },
-    phone: { type: String, trim: true, default: '' },
-    address: { type: String, trim: true, default: '' },
-    status: { type: String, enum: ['Active', 'Inactive'], default: 'Active' },
+    code: { type: String, trim: true, default: '' },     // AMC Code
+    name: { type: String, required: true, trim: true },  // AMC Name
   },
   { timestamps: true }
 );

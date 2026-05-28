@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, TrendingUp, TrendingDown, Wallet, PieChart } from "lucide-react";
+import { Plus, Pencil, Trash2, TrendingUp } from "lucide-react";
 import DataTable from "@/components/tables/DataTable";
 import FormModal from "@/components/ui/FormModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
@@ -14,158 +14,211 @@ import StatusBadge from "@/components/ui/StatusBadge";
 import { mfService, investorService, amcService, schemeService } from "@/services/api.service";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
+/* ── Schema — only the fields from the screenshot ─────────────── */
 const schema = z.object({
-  investorId: z.string().min(1, "Investor is required"),
-  amcId: z.string().min(1, "AMC is required"),
-  schemeId: z.string().min(1, "Scheme is required"),
-  transactionDate: z.string().min(1, "Date is required"),
-  type: z.enum(["Purchase", "Redemption"]),
-  units: z.coerce.number().positive("Units must be positive"),
-  nav: z.coerce.number().positive("NAV must be positive"),
-  amount: z.coerce.number().positive("Amount must be positive"),
-  notes: z.string().optional(),
+  investorId:       z.string().min(1, "Investor is required"),
+  effectiveDate:    z.string().min(1, "Effective Date is required"),
+  amcId:            z.string().min(1, "AMC is required"),
+  amcType:          z.string().optional(),
+  schemeId:         z.string().min(1, "Scheme is required"),
+  type:             z.enum(["Purchase", "Redemption"]),
+  mfType:           z.enum(["Dividend", "Growth"]),
+  jointHolder1:     z.string().optional(),
+  jointHolder2:     z.string().optional(),
+  amount:           z.coerce.number().positive("Amount Invested must be positive"),
+  firstDividendDate:z.string().optional(),
+  nav:              z.coerce.number().min(0),
+  units:            z.coerce.number().min(0),
 });
 
+const ic = "w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+
+/* ── Form ─────────────────────────────────────────────────────── */
 function MFForm({ data, onSubmit, isLoading, onCancel }) {
   const [investors, setInvestors] = useState([]);
   const [amcs, setAmcs] = useState([]);
   const [schemes, setSchemes] = useState([]);
-  const [selectedAmc, setSelectedAmc] = useState("");
 
   useEffect(() => {
     Promise.all([
-      investorService.getAll({ limit: 100 }),
-      amcService.getAll({ limit: 100 }),
+      investorService.getAll({ limit: 200 }),
+      amcService.getAll({ limit: 200 }),
     ]).then(([inv, amc]) => {
       setInvestors(inv.data.data || []);
       setAmcs(amc.data.data || []);
     });
   }, []);
 
-  const {
-    register, handleSubmit, reset, watch, setValue,
-    formState: { errors },
-  } = useForm({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
-      investorId: "", amcId: "", schemeId: "",
-      transactionDate: new Date().toISOString().split("T")[0],
-      type: "Purchase", units: "", nav: "", amount: "", notes: "",
+      investorId: "", effectiveDate: new Date().toISOString().split("T")[0],
+      amcId: "", amcType: "", schemeId: "", type: "Purchase",
+      mfType: "Growth", jointHolder1: "", jointHolder2: "",
+      amount: "", firstDividendDate: "", nav: "", units: "",
     },
   });
 
-  const watchedAmc = watch("amcId");
-  const units = watch("units");
-  const nav = watch("nav");
+  const watchedAmcId = watch("amcId");
 
-  // Auto-fetch schemes when AMC changes
+  // Load schemes when AMC changes
   useEffect(() => {
-    if (watchedAmc) {
-      setSelectedAmc(watchedAmc);
-      schemeService.getAll({ limit: 100 }).then((r) => {
+    if (watchedAmcId) {
+      schemeService.getAll({ limit: 200 }).then((r) => {
         const filtered = (r.data.data || []).filter(
-          (s) => (s.amcId?._id || s.amcId) === watchedAmc
+          (s) => (s.amcId?._id || s.amcId) === watchedAmcId
         );
         setSchemes(filtered);
       });
       setValue("schemeId", "");
     }
-  }, [watchedAmc, setValue]);
+  }, [watchedAmcId, setValue]);
 
-  // When scheme is selected, auto-fill NAV
+  // Auto-fill NAV when scheme selected
   const handleSchemeChange = (e) => {
-    const schemeId = e.target.value;
-    const scheme = schemes.find((s) => s._id === schemeId);
+    const sid = e.target.value;
+    const scheme = schemes.find((s) => s._id === sid);
     if (scheme?.nav) setValue("nav", scheme.nav);
   };
 
-  // Auto-calculate amount when units × nav changes
-  useEffect(() => {
-    if (units && nav) {
-      setValue("amount", parseFloat((Number(units) * Number(nav)).toFixed(2)));
-    }
-  }, [units, nav, setValue]);
-
   useEffect(() => {
     if (data) {
+      // pre-load schemes for the saved AMC
+      if (data.amcId?._id || data.amcId) {
+        schemeService.getAll({ limit: 200 }).then((r) => {
+          const filtered = (r.data.data || []).filter(
+            (s) => (s.amcId?._id || s.amcId) === (data.amcId?._id || data.amcId)
+          );
+          setSchemes(filtered);
+        });
+      }
       reset({
         investorId: data.investorId?._id || data.investorId || "",
+        effectiveDate: data.effectiveDate?.split("T")[0] || "",
         amcId: data.amcId?._id || data.amcId || "",
+        amcType: data.amcType || "",
         schemeId: data.schemeId?._id || data.schemeId || "",
-        transactionDate: data.transactionDate?.split("T")[0] || "",
-        type: data.type, units: data.units, nav: data.nav,
-        amount: data.amount, notes: data.notes || "",
+        type: data.type || "Purchase",
+        mfType: data.mfType || "Growth",
+        jointHolder1: data.jointHolder1 || "",
+        jointHolder2: data.jointHolder2 || "",
+        amount: data.amount || "",
+        firstDividendDate: data.firstDividendDate?.split("T")[0] || "",
+        nav: data.nav || "",
+        units: data.units || "",
       });
     } else {
       reset({
-        investorId: "", amcId: "", schemeId: "",
-        transactionDate: new Date().toISOString().split("T")[0],
-        type: "Purchase", units: "", nav: "", amount: "", notes: "",
+        investorId: "", effectiveDate: new Date().toISOString().split("T")[0],
+        amcId: "", amcType: "", schemeId: "", type: "Purchase",
+        mfType: "Growth", jointHolder1: "", jointHolder2: "",
+        amount: "", firstDividendDate: "", nav: "", units: "",
       });
     }
   }, [data, reset]);
 
-  const ic = "w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* Investor */}
+      <div>
+        <label className="text-sm font-medium text-slate-300 block mb-1.5">Investor *</label>
+        <select {...register("investorId")} className={ic}>
+          <option value="">Select investor...</option>
+          {investors.map((i) => <option key={i._id} value={i._id}>{i.name}</option>)}
+        </select>
+        {errors.investorId && <p className="text-red-400 text-xs mt-1">{errors.investorId.message}</p>}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {/* Effective Date */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Investor *</label>
-          <select {...register("investorId")} className={ic}>
-            <option value="">Select investor...</option>
-            {investors.map((i) => <option key={i._id} value={i._id}>{i.name}</option>)}
-          </select>
-          {errors.investorId && <p className="text-red-400 text-xs mt-1">{errors.investorId.message}</p>}
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Effective Date *</label>
+          <input {...register("effectiveDate")} type="date" className={ic} />
+          {errors.effectiveDate && <p className="text-red-400 text-xs mt-1">{errors.effectiveDate.message}</p>}
         </div>
+
+        {/* Transaction Type */}
         <div>
           <label className="text-sm font-medium text-slate-300 block mb-1.5">Transaction Type *</label>
           <select {...register("type")} className={ic}>
-            <option value="Purchase">Purchase (Buy)</option>
-            <option value="Redemption">Redemption (Sell)</option>
+            <option value="Purchase">Purchase</option>
+            <option value="Redemption">Redemption</option>
           </select>
         </div>
+
+        {/* AMC Code (select AMC) */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">AMC *</label>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">AMC Code *</label>
           <select {...register("amcId")} className={ic}>
-            <option value="">Select AMC...</option>
+            <option value="">Select AMC / Company / Bank Name...</option>
             {amcs.map((a) => <option key={a._id} value={a._id}>{a.name}</option>)}
           </select>
           {errors.amcId && <p className="text-red-400 text-xs mt-1">{errors.amcId.message}</p>}
         </div>
+
+        {/* AMC Type */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Scheme *</label>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">AMC Type</label>
+          <input {...register("amcType")} className={ic} placeholder="e.g. Equity, Debt, Hybrid..." />
+        </div>
+
+        {/* Scheme Code */}
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Scheme Code *</label>
           <select {...register("schemeId")} onChange={handleSchemeChange} className={ic}>
-            <option value="">Select scheme...</option>
+            <option value="">Select Scheme Name...</option>
             {schemes.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
           </select>
           {errors.schemeId && <p className="text-red-400 text-xs mt-1">{errors.schemeId.message}</p>}
         </div>
+
+        {/* Type of Mutual Fund: Dividend / Growth */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Transaction Date *</label>
-          <input {...register("transactionDate")} type="date" className={ic} />
-          {errors.transactionDate && <p className="text-red-400 text-xs mt-1">{errors.transactionDate.message}</p>}
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Type of Mutual Fund</label>
+          <select {...register("mfType")} className={ic}>
+            <option value="Dividend">Dividend</option>
+            <option value="Growth">Growth</option>
+          </select>
         </div>
+
+        {/* Joint Holder 1 */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">NAV (₹) *</label>
-          <input {...register("nav")} type="number" step="0.0001" className={ic} placeholder="Auto-filled from scheme" />
-          {errors.nav && <p className="text-red-400 text-xs mt-1">{errors.nav.message}</p>}
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Joint Holder 1</label>
+          <input {...register("jointHolder1")} className={ic} placeholder="Actual Joint Holder 1 Name" />
         </div>
+
+        {/* Joint Holder 2 */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Units *</label>
-          <input {...register("units")} type="number" step="0.0001" className={ic} placeholder="e.g. 100.5" />
-          {errors.units && <p className="text-red-400 text-xs mt-1">{errors.units.message}</p>}
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Joint Holder 2</label>
+          <input {...register("jointHolder2")} className={ic} placeholder="Actual Joint Holder 2 Name" />
         </div>
+
+        {/* Amount Invested */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Amount (₹) *</label>
-          <input {...register("amount")} type="number" step="0.01" className={ic} placeholder="Auto-calculated" />
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Amount Invested *</label>
+          <input {...register("amount")} type="number" step="0.01" className={ic} placeholder="₹ 0.00" />
           {errors.amount && <p className="text-red-400 text-xs mt-1">{errors.amount.message}</p>}
         </div>
+
+        {/* First Dividend Date */}
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">First Dividend Date</label>
+          <input {...register("firstDividendDate")} type="date" className={ic} />
+        </div>
+
+        {/* NAV */}
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">NAV</label>
+          <input {...register("nav")} type="number" step="0.0001" className={ic} placeholder="Auto-filled from scheme" />
+        </div>
+
+        {/* Units */}
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Units</label>
+          <input {...register("units")} type="number" step="0.0001" className={ic} placeholder="0.0000" />
+        </div>
       </div>
-      <div>
-        <label className="text-sm font-medium text-slate-300 block mb-1.5">Notes</label>
-        <textarea {...register("notes")} rows={2} className={`${ic} resize-none`} placeholder="Optional notes..." />
-      </div>
+
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 bg-slate-800 hover:bg-slate-700 transition-colors">Cancel</button>
         <button type="submit" disabled={isLoading} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-blue-600 hover:bg-blue-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
@@ -177,46 +230,27 @@ function MFForm({ data, onSubmit, isLoading, onCancel }) {
   );
 }
 
+/* ── Table columns ────────────────────────────────────────────── */
 const txColumns = [
-  { accessorKey: "transactionDate", header: "Date", cell: ({ getValue }) => formatDate(getValue()) },
-  { accessorKey: "investorId", header: "Investor", cell: ({ getValue }) => <span className="font-medium text-slate-200">{getValue()?.name || "—"}</span> },
-  { accessorKey: "amcId", header: "AMC", cell: ({ getValue }) => <span className="text-slate-400">{getValue()?.name || "—"}</span> },
-  { accessorKey: "schemeId", header: "Scheme", cell: ({ getValue }) => <span className="text-slate-300 text-xs max-w-[160px] truncate block">{getValue()?.name || "—"}</span> },
+  { accessorKey: "effectiveDate", header: "Effective Date", cell: ({ getValue }) => <span className="font-semibold text-slate-200">{formatDate(getValue())}</span> },
+  { accessorKey: "investorId", header: "Investor", cell: ({ getValue }) => <span className="font-semibold text-slate-100">{getValue()?.name || "—"}</span> },
+  { accessorKey: "amcId", header: "AMC Code", cell: ({ getValue }) => <span className="text-blue-400 font-semibold">{getValue()?.name || "—"}</span> },
+  { accessorKey: "amcType", header: "AMC Type", cell: ({ getValue }) => <span className="text-slate-400">{getValue() || "—"}</span> },
+  { accessorKey: "schemeId", header: "Scheme Code", cell: ({ getValue }) => <span className="text-slate-300 text-xs max-w-[160px] truncate block">{getValue()?.name || "—"}</span> },
   { accessorKey: "type", header: "Type", cell: ({ getValue }) => <StatusBadge status={getValue()} /> },
-  { accessorKey: "units", header: "Units", cell: ({ getValue }) => getValue()?.toFixed(4) },
-  { accessorKey: "nav", header: "NAV", cell: ({ getValue }) => `₹${getValue()?.toFixed(4)}` },
-  { accessorKey: "amount", header: "Amount", cell: ({ getValue }) => <span className="font-semibold">{formatCurrency(getValue())}</span> },
+  { accessorKey: "mfType", header: "MF Type", cell: ({ getValue }) => <span className={`text-xs font-semibold px-2 py-0.5 rounded-lg ${getValue() === "Dividend" ? "text-amber-400 bg-amber-500/10" : "text-emerald-400 bg-emerald-500/10"}`}>{getValue() || "Growth"}</span> },
+  { accessorKey: "amount", header: "Amount Invested", cell: ({ getValue }) => <span className="font-bold text-slate-100">{formatCurrency(getValue())}</span> },
+  { accessorKey: "nav", header: "NAV", cell: ({ getValue }) => getValue() ? `₹${Number(getValue()).toFixed(4)}` : "—" },
+  { accessorKey: "units", header: "Units", cell: ({ getValue }) => getValue() ? Number(getValue()).toFixed(4) : "—" },
 ];
 
-const holdingColumns = [
-  { accessorKey: "investor", header: "Investor", cell: ({ getValue }) => <span className="font-medium text-slate-200">{getValue()?.name}</span> },
-  { accessorKey: "scheme", header: "Scheme", cell: ({ getValue }) => <span className="text-xs max-w-[160px] truncate block text-slate-300">{getValue()?.name}</span> },
-  { accessorKey: "netUnits", header: "Net Units", cell: ({ getValue }) => <span className="font-mono text-blue-400">{getValue()?.toFixed(4)}</span> },
-  { accessorKey: "totalInvested", header: "Invested", cell: ({ getValue }) => formatCurrency(getValue()) },
-  { accessorKey: "currentValue", header: "Current Value", cell: ({ getValue }) => <span className="text-emerald-400 font-semibold">{formatCurrency(getValue())}</span> },
-  {
-    id: "gainLoss",
-    header: "Gain / Loss",
-    cell: ({ row }) => {
-      const gain = (row.original.currentValue || 0) - (row.original.totalInvested || 0);
-      return (
-        <span className={gain >= 0 ? "text-emerald-400 font-semibold" : "text-red-400 font-semibold"}>
-          {gain >= 0 ? "+" : ""}{formatCurrency(gain)}
-        </span>
-      );
-    },
-  },
-];
-
+/* ── Page ─────────────────────────────────────────────────────── */
 export default function MutualFundsPage() {
-  const [activeTab, setActiveTab] = useState("transactions");
   const [records, setRecords] = useState([]);
-  const [holdings, setHoldings] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
-  const [holdingsLoading, setHoldingsLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
@@ -227,7 +261,7 @@ export default function MutualFundsPage() {
   const totalInvested = records.filter((r) => r.type === "Purchase").reduce((s, r) => s + r.amount, 0);
   const totalRedeemed = records.filter((r) => r.type === "Redemption").reduce((s, r) => s + r.amount, 0);
 
-  const fetchTransactions = useCallback(async (p = 1, s = "") => {
+  const fetchData = useCallback(async (p = 1, s = "") => {
     setLoading(true);
     try {
       const res = await mfService.getAll({ page: p, limit: 10, search: s });
@@ -237,16 +271,7 @@ export default function MutualFundsPage() {
     finally { setLoading(false); }
   }, []);
 
-  const fetchHoldings = useCallback(async () => {
-    setHoldingsLoading(true);
-    try {
-      const res = await mfService.getHoldings();
-      setHoldings(res.data.data);
-    } catch { toast.error("Failed to load holdings"); }
-    finally { setHoldingsLoading(false); }
-  }, []);
-
-  useEffect(() => { fetchTransactions(); fetchHoldings(); }, [fetchTransactions, fetchHoldings]);
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const handleFormSubmit = async (data) => {
     setFormLoading(true);
@@ -254,8 +279,7 @@ export default function MutualFundsPage() {
       if (editRecord) { await mfService.update(editRecord._id, data); toast.success("Updated!"); }
       else { await mfService.create(data); toast.success("Transaction recorded!"); }
       setModalOpen(false);
-      fetchTransactions(page, search);
-      fetchHoldings();
+      fetchData(page, search);
     } catch (e) { toast.error(e.response?.data?.message || "Failed"); }
     finally { setFormLoading(false); }
   };
@@ -266,8 +290,7 @@ export default function MutualFundsPage() {
       await mfService.delete(deleteId);
       toast.success("Deleted!");
       setDeleteOpen(false);
-      fetchTransactions(page, search);
-      fetchHoldings();
+      fetchData(page, search);
     } catch { toast.error("Delete failed"); }
     finally { setDeleteLoading(false); }
   };
@@ -291,8 +314,8 @@ export default function MutualFundsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Mutual Funds"
-        description="Manage mutual fund purchases, redemptions, and portfolio holdings"
+        title="Mutual Funds — Purchase / Redemption"
+        description="Record and manage mutual fund transactions"
         actions={
           <button onClick={() => { setEditRecord(null); setModalOpen(true); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-blue-500/20">
@@ -302,7 +325,7 @@ export default function MutualFundsPage() {
       />
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="stat-card-blue rounded-2xl p-5">
           <p className="text-slate-400 text-sm mb-2">Total Purchased</p>
           <p className="text-2xl font-bold text-slate-100">{formatCurrency(totalInvested)}</p>
@@ -311,52 +334,21 @@ export default function MutualFundsPage() {
           <p className="text-slate-400 text-sm mb-2">Total Redeemed</p>
           <p className="text-2xl font-bold text-slate-100">{formatCurrency(totalRedeemed)}</p>
         </div>
-        <div className="stat-card-emerald rounded-2xl p-5">
-          <p className="text-slate-400 text-sm mb-2">Net Holdings Value</p>
-          <p className="text-2xl font-bold text-slate-100">
-            {formatCurrency(holdings.reduce((s, h) => s + (h.currentValue || 0), 0))}
-          </p>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex gap-2 border-b border-slate-800 pb-0">
-        {["transactions", "holdings"].map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium rounded-t-xl transition-all capitalize ${activeTab === tab
-              ? "bg-blue-600/20 text-blue-400 border-b-2 border-blue-500"
-              : "text-slate-400 hover:text-slate-200"
-              }`}
-          >
-            {tab === "transactions" ? "All Transactions" : "Holdings Summary"}
-          </button>
-        ))}
       </div>
 
       <div className="glass-card rounded-2xl p-5">
-        {activeTab === "transactions" ? (
-          <DataTable
-            columns={[...txColumns, actionColumn]}
-            data={records} loading={loading} totalRows={total}
-            page={page} pageSize={10}
-            onPageChange={(p) => { setPage(p); fetchTransactions(p, search); }}
-            onSearch={(s) => { setSearch(s); setPage(1); fetchTransactions(1, s); }}
-            searchPlaceholder="Search transactions..."
-          />
-        ) : (
-          <DataTable
-            columns={holdingColumns}
-            data={holdings} loading={holdingsLoading} totalRows={holdings.length}
-            page={1} pageSize={holdings.length || 10}
-            searchPlaceholder="Search holdings..."
-          />
-        )}
+        <DataTable
+          columns={[...txColumns, actionColumn]}
+          data={records} loading={loading} totalRows={total}
+          page={page} pageSize={10}
+          onPageChange={(p) => { setPage(p); fetchData(p, search); }}
+          onSearch={(s) => { setSearch(s); setPage(1); fetchData(1, s); }}
+          searchPlaceholder="Search transactions..."
+        />
       </div>
 
       <FormModal isOpen={modalOpen} onClose={() => setModalOpen(false)}
-        title={editRecord ? "Edit Transaction" : "Add MF Transaction"} size="xl">
+        title={editRecord ? "Edit MF Transaction" : "Add MF Transaction"} size="xl">
         <MFForm data={editRecord} onSubmit={handleFormSubmit} isLoading={formLoading} onCancel={() => setModalOpen(false)} />
       </FormModal>
 

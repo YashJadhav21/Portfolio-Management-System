@@ -41,11 +41,17 @@
   box-sizing: border-box;
 }
 
+html {
+  font-size: 17px;
+}
+
 body {
   background-color: #020817;
   color: #f8fafc;
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 /* Custom scrollbar */
@@ -124,3 +130,45 @@ body {
               radial-gradient(ellipse at bottom right, rgba(139,92,246,0.15) 0%, transparent 50%),
               #020817;
 }
+
+/* ── Global size boost ─────────────────────────────────────────── */
+/* Table cells & headers */
+table th {
+  font-size: 0.85rem !important;
+  letter-spacing: 0.02em;
+}
+table td {
+  font-size: 1rem !important;
+}
+
+/* Sidebar nav items */
+nav a, nav button {
+  font-size: 1rem;
+}
+
+/* Form labels */
+label {
+  font-size: 0.95rem !important;
+}
+
+/* Form inputs and selects */
+input, select, textarea {
+  font-size: 1rem !important;
+}
+
+/* Badges and small text — keep readable */
+.text-xs {
+  font-size: 0.8rem !important;
+}
+.text-sm {
+  font-size: 0.95rem !important;
+}
+
+/* Page titles */
+h1 { font-size: 1.6rem !important; font-weight: 700 !important; }
+h2 { font-size: 1.25rem !important; }
+h3 { font-size: 1.1rem !important; }
+
+/* Stat card big numbers */
+.text-2xl { font-size: 1.6rem !important; }
+.text-3xl { font-size: 2rem !important; }

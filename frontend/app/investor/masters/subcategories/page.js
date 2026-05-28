@@ -9,7 +9,8 @@ import CrudPage from "@/components/CrudPage";
 
 const schema = z.object({
   categoryId: z.string().min(1, "Category is required"),
-  name: z.string().min(1, "Subcategory name is required"),
+  code: z.string().optional(),
+  name: z.string().min(1, "Sub-category name is required"),
   description: z.string().optional(),
 });
 
@@ -24,12 +25,12 @@ function SubcategoryForm({ data, onSubmit, isLoading, onCancel }) {
 
   const { register, handleSubmit, reset, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
-    defaultValues: { categoryId: "", name: "", description: "" },
+    defaultValues: { categoryId: "", code: "", name: "", description: "" },
   });
 
   useEffect(() => {
-    if (data) reset({ categoryId: data.categoryId?._id || data.categoryId || "", name: data.name, description: data.description || "" });
-    else reset({ categoryId: "", name: "", description: "" });
+    if (data) reset({ categoryId: data.categoryId?._id || data.categoryId || "", code: data.code || "", name: data.name, description: data.description || "" });
+    else reset({ categoryId: "", code: "", name: "", description: "" });
   }, [data, reset]);
 
   return (
@@ -42,10 +43,16 @@ function SubcategoryForm({ data, onSubmit, isLoading, onCancel }) {
         </select>
         {errors.categoryId && <p className="text-red-400 text-xs mt-1">{errors.categoryId.message}</p>}
       </div>
-      <div>
-        <label className="text-sm font-medium text-slate-300 block mb-1.5">Sub-Category Name *</label>
-        <input {...register("name")} className={ic} placeholder="e.g. BNFD" />
-        {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name.message}</p>}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Sub-Category Code</label>
+          <input {...register("code")} className={ic} placeholder="e.g. BNFD" />
+        </div>
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Sub-Category Name *</label>
+          <input {...register("name")} className={ic} placeholder="e.g. BNFD" />
+          {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name.message}</p>}
+        </div>
       </div>
       <div>
         <label className="text-sm font-medium text-slate-300 block mb-1.5">Description</label>
@@ -64,16 +71,16 @@ function SubcategoryForm({ data, onSubmit, isLoading, onCancel }) {
 
 const columns = [
   { accessorKey: "categoryId", header: "Category", cell: ({ getValue }) => <span className="font-semibold text-blue-400">{getValue()?.name || "—"}</span> },
-  { accessorKey: "name", header: "Sub-Category", cell: ({ getValue }) => <span className="font-semibold text-slate-100">{getValue()}</span> },
+  { accessorKey: "code", header: "Sub-Cat. Code", cell: ({ getValue }) => <span className="font-mono text-emerald-400 font-semibold">{getValue() || "—"}</span> },
+  { accessorKey: "name", header: "Sub-Category Name", cell: ({ getValue }) => <span className="font-semibold text-slate-100">{getValue()}</span> },
   { accessorKey: "description", header: "Description", cell: ({ getValue }) => <span className="text-slate-400">{getValue() || "—"}</span> },
-  { accessorKey: "createdAt", header: "Created", cell: ({ getValue }) => <span className="text-slate-400 text-xs">{new Date(getValue()).toLocaleDateString("en-IN")}</span> },
 ];
 
 export default function InvestorSubcategoriesPage() {
   return (
     <CrudPage
       title="Sub-Category Master"
-      description="Manage sub-categories under each asset category (BNFD, CNFD, Dividend, Growth…)"
+      description="Sub-categories under each asset category (BNFD, CNFD, Dividend, Growth…)"
       service={subcategoryService}
       columns={columns}
       FormComponent={SubcategoryForm}

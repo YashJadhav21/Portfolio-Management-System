@@ -36,24 +36,11 @@ const navItems = [
     label: "Masters",
     icon: FolderOpen,
     children: [
-      { 
-        label: "Groups", 
-        href: "/masters/groups", 
-        icon: Users,
-        subItems: [
-          { label: "Investors", href: "/masters/investors", icon: Users }
-        ]
-      },
-      { 
-        label: "Categories", 
-        href: "/masters/categories", 
-        icon: Tag,
-        subItems: [
-          { label: "Subcategories", href: "/masters/subcategories", icon: Tags }
-        ]
-      },
-      { label: "Companies", href: "/masters/companies", icon: Building2 },
-      { label: "Banks", href: "/masters/banks", icon: Landmark },
+      { label: "Groups", href: "/masters/groups", icon: Users },
+      { label: "Investors", href: "/masters/investors", icon: Users },
+      { label: "Categories", href: "/masters/categories", icon: Tag },
+      { label: "Sub-Categories", href: "/masters/subcategories", icon: Tags },
+      { label: "Company / Bank", href: "/masters/companies", icon: Building2 },
       { label: "AMCs", href: "/masters/amcs", icon: Landmark },
       { label: "Schemes", href: "/masters/schemes", icon: BookOpen },
     ],
