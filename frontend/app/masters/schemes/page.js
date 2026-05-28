@@ -107,7 +107,12 @@ function SchemeForm({ data, onSubmit, isLoading, onCancel }) {
         {/* Type of MF */}
         <div>
           <label className="text-sm font-medium text-slate-300 block mb-1.5">Type of MF</label>
-          <input {...register("mfType")} className={ic} placeholder="Actual MF Type Name" />
+          <select {...register("mfType")} className={ic}>
+            <option value="">Select Type of MF...</option>
+            <option value="Large Cap">Large Cap</option>
+            <option value="Mid Cap">Mid Cap</option>
+            <option value="Flexi Cap">Flexi Cap</option>
+          </select>
         </div>
 
         {/* D / G Flag */}

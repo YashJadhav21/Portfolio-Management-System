@@ -267,7 +267,6 @@ function FamilyTree({ treeData, loading }) {
             {totalGain >= 0 ? "+" : ""}{formatCurrency(totalGain)}
           </p>
         </div>
-        <div className="w-5 shrink-0" />
       </div>
 
       {/* Members */}

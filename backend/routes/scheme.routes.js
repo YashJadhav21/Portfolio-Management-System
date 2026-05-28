@@ -5,9 +5,7 @@ const Scheme = require('../models/Scheme.model');
 const { protect } = require('../middleware/auth.middleware');
 
 const ctrl = createCRUDController(Scheme, [
-  { path: 'amcId', select: 'name' },
-  { path: 'categoryId', select: 'name' },
-  { path: 'subcategoryId', select: 'name' },
+  { path: 'amcId', select: 'name code' },
 ]);
 
 router.use(protect);

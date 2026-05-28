@@ -146,28 +146,33 @@ function MFForm({ data, onSubmit, isLoading, onCancel }) {
           </select>
         </div>
 
-        {/* AMC Code (select AMC) */}
+        {/* AMC Code (select: shows code — name) */}
         <div>
           <label className="text-sm font-medium text-slate-300 block mb-1.5">AMC Code *</label>
           <select {...register("amcId")} className={ic}>
-            <option value="">Select AMC / Company / Bank Name...</option>
-            {amcs.map((a) => <option key={a._id} value={a._id}>{a.name}</option>)}
+            <option value="">Select AMC Code...</option>
+            {amcs.map((a) => <option key={a._id} value={a._id}>{a.code ? `${a.code} — ${a.name}` : a.name}</option>)}
           </select>
           {errors.amcId && <p className="text-red-400 text-xs mt-1">{errors.amcId.message}</p>}
         </div>
 
-        {/* AMC Type */}
+        {/* AMC Type — dropdown: Large Cap, Mid Cap, Flexi Cap */}
         <div>
           <label className="text-sm font-medium text-slate-300 block mb-1.5">AMC Type</label>
-          <input {...register("amcType")} className={ic} placeholder="e.g. Equity, Debt, Hybrid..." />
+          <select {...register("amcType")} className={ic}>
+            <option value="">Select AMC Type...</option>
+            <option value="Large Cap">Large Cap</option>
+            <option value="Mid Cap">Mid Cap</option>
+            <option value="Flexi Cap">Flexi Cap</option>
+          </select>
         </div>
 
-        {/* Scheme Code */}
+        {/* Scheme Code — shows schemeCode — Scheme Name */}
         <div>
           <label className="text-sm font-medium text-slate-300 block mb-1.5">Scheme Code *</label>
           <select {...register("schemeId")} onChange={handleSchemeChange} className={ic}>
-            <option value="">Select Scheme Name...</option>
-            {schemes.map((s) => <option key={s._id} value={s._id}>{s.name}</option>)}
+            <option value="">Select Scheme Code...</option>
+            {schemes.map((s) => <option key={s._id} value={s._id}>{s.schemeCode ? `${s.schemeCode} — ${s.name}` : s.name}</option>)}
           </select>
           {errors.schemeId && <p className="text-red-400 text-xs mt-1">{errors.schemeId.message}</p>}
         </div>

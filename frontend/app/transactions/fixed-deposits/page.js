@@ -5,224 +5,233 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Calculator, TrendingUp, Banknote, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import DataTable from "@/components/tables/DataTable";
 import FormModal from "@/components/ui/FormModal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import PageHeader from "@/components/ui/PageHeader";
 import StatusBadge from "@/components/ui/StatusBadge";
-import { fdService, investorService } from "@/services/api.service";
+import { fdService, investorService, companyService } from "@/services/api.service";
 import { formatCurrency, formatDate } from "@/lib/utils";
 
-const FD_SUBCATEGORIES = ['BNFD','CNFD','BCFD','CCFD','CD','NCD','PMIS','PTD','Insurance Annuity'];
+/* ── Screenshot fields — Fixed Income - Fresh Fixed Deposit ──
+   Effective Date
+   Sub-Category Code     (dropdown: BNFD, CNFD, BCFD, CCFD, CD, NCD, PMIS, PTD, Insurance Annuity)
+   Company / Bank Code   (dropdown → shows Company / Bank Name)
+   Joint Holder 1
+   Joint Holder 2
+   Deposit Amount
+   Interest Rate
+   First Interest Date
+   Maturity Date
+   Maturity Amount
+────────────────────────────────────────────────────────────── */
+
+const FI_SUBCATEGORIES = [
+  "BNFD", "CNFD", "BCFD", "CCFD", "CD", "NCD", "PMIS", "PTD", "Insurance Annuity",
+];
 
 const schema = z.object({
-  investorId: z.string().min(1, "Investor is required"),
-  subcategory: z.string().min(1, "Sub-category is required"),
-  bankName: z.string().min(1, "Bank name is required"),
-  fdNumber: z.string().optional(),
-  effectiveDate: z.string().min(1, "Effective date is required"),
-  amount: z.coerce.number().positive("Amount must be positive"),
-  interestRate: z.coerce.number().positive("Rate must be positive").max(100),
-  tenureMonths: z.coerce.number().int().positive("Tenure must be positive"),
-  maturityDate: z.string().min(1, "Maturity date is required"),
-  interestFrequency: z.enum(["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"]),
-  status: z.enum(["Active", "Matured", "Premature Closed"]),
-  notes: z.string().optional(),
+  investorId:        z.string().min(1, "Investor is required"),
+  effectiveDate:     z.string().min(1, "Effective Date is required"),
+  subcategoryCode:   z.string().min(1, "Sub-Category is required"),
+  companyId:         z.string().min(1, "Company / Bank is required"),
+  jointHolder1:      z.string().optional(),
+  jointHolder2:      z.string().optional(),
+  depositAmount:     z.coerce.number().positive("Deposit Amount must be positive"),
+  interestRate:      z.coerce.number().positive().max(100),
+  firstInterestDate: z.string().optional(),
+  maturityDate:      z.string().min(1, "Maturity Date is required"),
+  maturityAmount:    z.coerce.number().min(0).optional(),
 });
 
-// Auto-calculate maturity date from effective date + tenure
-function calcMaturityDate(effectiveDate, tenureMonths) {
-  if (!effectiveDate || !tenureMonths) return "";
-  const d = new Date(effectiveDate);
-  d.setMonth(d.getMonth() + parseInt(tenureMonths));
-  return d.toISOString().split("T")[0];
-}
-
-// Preview compound interest
-function previewFD(amount, rate, months) {
-  if (!amount || !rate || !months) return { maturity: 0, interest: 0 };
-  const years = months / 12;
-  const maturity = amount * Math.pow(1 + rate / 100, years);
-  return {
-    maturity: parseFloat(maturity.toFixed(2)),
-    interest: parseFloat((maturity - amount).toFixed(2)),
-  };
-}
+const ic = "w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
 
 function FDForm({ data, onSubmit, isLoading, onCancel }) {
   const [investors, setInvestors] = useState([]);
-  const [preview, setPreview] = useState({ maturity: 0, interest: 0 });
+  const [companies, setCompanies] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState(null);
 
   useEffect(() => {
-    investorService.getAll({ limit: 100 }).then((r) => setInvestors(r.data.data || []));
+    Promise.all([
+      investorService.getAll({ limit: 200 }),
+      companyService.getAll({ limit: 200 }),
+    ]).then(([inv, comp]) => {
+      setInvestors(inv.data.data || []);
+      setCompanies(comp.data.data || []);
+    });
   }, []);
 
-  const {
-    register, handleSubmit, reset, watch, setValue,
-    formState: { errors },
-  } = useForm({
+  const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
-      investorId: "", subcategory: "BNFD", bankName: "", fdNumber: "", effectiveDate: "",
-      amount: "", interestRate: "", tenureMonths: "", maturityDate: "",
-      interestFrequency: "On Maturity", status: "Active", notes: "",
+      investorId: "", effectiveDate: new Date().toISOString().split("T")[0],
+      subcategoryCode: "BNFD", companyId: "",
+      jointHolder1: "", jointHolder2: "",
+      depositAmount: "", interestRate: "",
+      firstInterestDate: "", maturityDate: "", maturityAmount: "",
     },
   });
 
-  const [amount, interestRate, tenureMonths, effectiveDate] = watch(["amount", "interestRate", "tenureMonths", "effectiveDate"]);
+  const watchedCompanyId = watch("companyId");
 
-  // Auto-calc maturity date
   useEffect(() => {
-    if (effectiveDate && tenureMonths) {
-      setValue("maturityDate", calcMaturityDate(effectiveDate, tenureMonths));
-    }
-  }, [effectiveDate, tenureMonths, setValue]);
-
-  // Live preview
-  useEffect(() => {
-    setPreview(previewFD(Number(amount), Number(interestRate), Number(tenureMonths)));
-  }, [amount, interestRate, tenureMonths]);
+    const co = companies.find((c) => c._id === watchedCompanyId);
+    setSelectedCompany(co || null);
+  }, [watchedCompanyId, companies]);
 
   useEffect(() => {
     if (data) {
       reset({
         investorId: data.investorId?._id || data.investorId || "",
-        subcategory: data.subcategory || "BNFD",
-        bankName: data.bankName, fdNumber: data.fdNumber || "",
-        effectiveDate: data.effectiveDate ? data.effectiveDate.split("T")[0] : "",
-        amount: data.amount, interestRate: data.interestRate,
-        tenureMonths: data.tenureMonths,
-        maturityDate: data.maturityDate ? data.maturityDate.split("T")[0] : "",
-        interestFrequency: data.interestFrequency, status: data.status,
-        notes: data.notes || "",
+        effectiveDate: data.effectiveDate?.split("T")[0] || "",
+        subcategoryCode: data.subcategoryCode || "BNFD",
+        companyId: data.companyId?._id || data.companyId || "",
+        jointHolder1: data.jointHolder1 || "",
+        jointHolder2: data.jointHolder2 || "",
+        depositAmount: data.depositAmount || "",
+        interestRate: data.interestRate || "",
+        firstInterestDate: data.firstInterestDate?.split("T")[0] || "",
+        maturityDate: data.maturityDate?.split("T")[0] || "",
+        maturityAmount: data.maturityAmount || "",
       });
+      const co = companies.find((c) => c._id === (data.companyId?._id || data.companyId));
+      setSelectedCompany(co || null);
     } else {
       reset({
-        investorId: "", subcategory: "BNFD", bankName: "", fdNumber: "", effectiveDate: "",
-        amount: "", interestRate: "", tenureMonths: "", maturityDate: "",
-        interestFrequency: "On Maturity", status: "Active", notes: "",
+        investorId: "", effectiveDate: new Date().toISOString().split("T")[0],
+        subcategoryCode: "BNFD", companyId: "",
+        jointHolder1: "", jointHolder2: "",
+        depositAmount: "", interestRate: "",
+        firstInterestDate: "", maturityDate: "", maturityAmount: "",
       });
+      setSelectedCompany(null);
     }
-  }, [data, reset]);
-
-  const ic = "w-full bg-slate-800/50 border border-slate-700 rounded-xl px-4 py-2.5 text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
+  }, [data, reset, companies]);
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      {/* Investor */}
+      <div>
+        <label className="text-sm font-medium text-slate-300 block mb-1.5">Investor *</label>
+        <select {...register("investorId")} className={ic}>
+          <option value="">Select investor...</option>
+          {investors.map((i) => <option key={i._id} value={i._id}>{i.name}</option>)}
+        </select>
+        {errors.investorId && <p className="text-red-400 text-xs mt-1">{errors.investorId.message}</p>}
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="sm:col-span-2">
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Investor *</label>
-          <select {...register("investorId")} className={ic}>
-            <option value="">Select investor...</option>
-            {investors.map((i) => <option key={i._id} value={i._id}>{i.name}</option>)}
-          </select>
-          {errors.investorId && <p className="text-red-400 text-xs mt-1">{errors.investorId.message}</p>}
-        </div>
-        <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Sub-Category *</label>
-          <select {...register("subcategory")} className={ic}>
-            {FD_SUBCATEGORIES.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          {errors.subcategory && <p className="text-red-400 text-xs mt-1">{errors.subcategory.message}</p>}
-        </div>
-        <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Bank Name *</label>
-          <input {...register("bankName")} className={ic} placeholder="e.g. SBI Bank" />
-          {errors.bankName && <p className="text-red-400 text-xs mt-1">{errors.bankName.message}</p>}
-        </div>
-        <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">FD Number</label>
-          <input {...register("fdNumber")} className={ic} placeholder="e.g. FD-SBI-001" />
-        </div>
+        {/* Effective Date */}
         <div>
           <label className="text-sm font-medium text-slate-300 block mb-1.5">Effective Date *</label>
           <input {...register("effectiveDate")} type="date" className={ic} />
           {errors.effectiveDate && <p className="text-red-400 text-xs mt-1">{errors.effectiveDate.message}</p>}
         </div>
+
+        {/* Sub-Category Code */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Tenure (Months) *</label>
-          <input {...register("tenureMonths")} type="number" className={ic} placeholder="12" />
-          {errors.tenureMonths && <p className="text-red-400 text-xs mt-1">{errors.tenureMonths.message}</p>}
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Sub-Category Code *</label>
+          <select {...register("subcategoryCode")} className={ic}>
+            {FI_SUBCATEGORIES.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          {errors.subcategoryCode && <p className="text-red-400 text-xs mt-1">{errors.subcategoryCode.message}</p>}
         </div>
+
+        {/* Company / Bank Code → shows Company / Bank Name */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">FD Amount (₹) *</label>
-          <input {...register("amount")} type="number" className={ic} placeholder="500000" />
-          {errors.amount && <p className="text-red-400 text-xs mt-1">{errors.amount.message}</p>}
-        </div>
-        <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Interest Rate (% p.a.) *</label>
-          <input {...register("interestRate")} type="number" step="0.01" className={ic} placeholder="7.5" />
-          {errors.interestRate && <p className="text-red-400 text-xs mt-1">{errors.interestRate.message}</p>}
-        </div>
-        <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Maturity Date</label>
-          <input {...register("maturityDate")} type="date" className={ic} />
-        </div>
-        <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Interest Frequency</label>
-          <select {...register("interestFrequency")} className={ic}>
-            {["Monthly", "Quarterly", "Half-Yearly", "Yearly", "On Maturity"].map((f) => (
-              <option key={f} value={f}>{f}</option>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Company / Bank Code *</label>
+          <select {...register("companyId")} className={ic}>
+            <option value="">Select Company / Bank Name...</option>
+            {companies.map((c) => (
+              <option key={c._id} value={c._id}>
+                {c.code ? `${c.code} — ` : ""}{c.name} ({c.flag === "B" ? "Bank" : "Company"})
+              </option>
             ))}
           </select>
+          {errors.companyId && <p className="text-red-400 text-xs mt-1">{errors.companyId.message}</p>}
         </div>
+
+        {/* Company Name auto-display */}
+        {selectedCompany && (
+          <div>
+            <label className="text-sm font-medium text-slate-300 block mb-1.5">Company / Bank Name</label>
+            <input value={selectedCompany.name} readOnly className={`${ic} opacity-60 cursor-not-allowed`} />
+          </div>
+        )}
+
+        {/* Joint Holder 1 */}
         <div>
-          <label className="text-sm font-medium text-slate-300 block mb-1.5">Status</label>
-          <select {...register("status")} className={ic}>
-            <option value="Active">Active</option>
-            <option value="Matured">Matured</option>
-            <option value="Premature Closed">Premature Closed</option>
-          </select>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Joint Holder 1</label>
+          <input {...register("jointHolder1")} className={ic} placeholder="Joint Holder 1 Name" />
         </div>
-      </div>
 
-      {/* Live Calculation Preview */}
-      {preview.maturity > 0 && (
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4 grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-slate-400 text-xs mb-1">Maturity Amount</p>
-            <p className="text-blue-400 font-bold text-lg">{formatCurrency(preview.maturity)}</p>
-          </div>
-          <div>
-            <p className="text-slate-400 text-xs mb-1">Interest Earned</p>
-            <p className="text-emerald-400 font-bold text-lg">{formatCurrency(preview.interest)}</p>
-          </div>
+        {/* Joint Holder 2 */}
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Joint Holder 2</label>
+          <input {...register("jointHolder2")} className={ic} placeholder="Joint Holder 2 Name" />
         </div>
-      )}
 
-      <div>
-        <label className="text-sm font-medium text-slate-300 block mb-1.5">Notes</label>
-        <textarea {...register("notes")} rows={2} className={`${ic} resize-none`} placeholder="Optional notes..." />
+        {/* Deposit Amount */}
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Deposit Amount *</label>
+          <input {...register("depositAmount")} type="number" step="0.01" className={ic} placeholder="₹ 0.00" />
+          {errors.depositAmount && <p className="text-red-400 text-xs mt-1">{errors.depositAmount.message}</p>}
+        </div>
+
+        {/* Interest Rate */}
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Interest Rate (% p.a.) *</label>
+          <input {...register("interestRate")} type="number" step="0.01" className={ic} placeholder="e.g. 7.5" />
+          {errors.interestRate && <p className="text-red-400 text-xs mt-1">{errors.interestRate.message}</p>}
+        </div>
+
+        {/* First Interest Date */}
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">First Interest Date</label>
+          <input {...register("firstInterestDate")} type="date" className={ic} />
+        </div>
+
+        {/* Maturity Date */}
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Maturity Date *</label>
+          <input {...register("maturityDate")} type="date" className={ic} />
+          {errors.maturityDate && <p className="text-red-400 text-xs mt-1">{errors.maturityDate.message}</p>}
+        </div>
+
+        {/* Maturity Amount */}
+        <div>
+          <label className="text-sm font-medium text-slate-300 block mb-1.5">Maturity Amount</label>
+          <input {...register("maturityAmount")} type="number" step="0.01" className={ic} placeholder="₹ 0.00" />
+        </div>
       </div>
 
       <div className="flex gap-3 pt-2">
         <button type="button" onClick={onCancel} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 bg-slate-800 hover:bg-slate-700 transition-colors">Cancel</button>
         <button type="submit" disabled={isLoading} className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium text-white bg-blue-600 hover:bg-blue-500 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
           {isLoading && <div className="w-3.5 h-3.5 border-2 border-white/50 border-t-white rounded-full animate-spin" />}
-          {data ? "Update FD" : "Create FD"}
+          {data ? "Update" : "Record"}
         </button>
       </div>
     </form>
   );
 }
 
-const columns = [
+const txColumns = [
+  { accessorKey: "effectiveDate", header: "Effective Date", cell: ({ getValue }) => <span className="font-semibold text-slate-200">{formatDate(getValue())}</span> },
   { accessorKey: "investorId", header: "Investor", cell: ({ getValue }) => <span className="font-semibold text-slate-100">{getValue()?.name || "—"}</span> },
-  { accessorKey: "subcategory", header: "Sub-Category", cell: ({ getValue }) => <span className="font-semibold text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded-lg text-xs">{getValue() || "—"}</span> },
-  { accessorKey: "bankName", header: "Bank", cell: ({ getValue }) => <span className="font-semibold text-slate-200">{getValue()}</span> },
-  { accessorKey: "fdNumber", header: "FD Number", cell: ({ getValue }) => <span className="font-mono text-sm text-slate-300 font-semibold">{getValue() || "—"}</span> },
-  { accessorKey: "amount", header: "Amount", cell: ({ getValue }) => <span className="font-bold text-slate-100">{formatCurrency(getValue())}</span> },
-  { accessorKey: "interestRate", header: "Rate", cell: ({ getValue }) => <span className="text-amber-400 font-bold">{getValue()}%</span> },
-  { accessorKey: "tenureMonths", header: "Tenure", cell: ({ getValue }) => <span className="font-semibold">{getValue()} mo</span> },
-  { accessorKey: "maturityAmount", header: "Maturity Amt", cell: ({ getValue }) => <span className="text-emerald-400 font-bold">{formatCurrency(getValue())}</span> },
-  { accessorKey: "interestEarned", header: "Interest", cell: ({ getValue }) => <span className="text-blue-400 font-semibold">{formatCurrency(getValue())}</span> },
-  { accessorKey: "maturityDate", header: "Maturity Date", cell: ({ getValue }) => <span className="font-semibold">{formatDate(getValue())}</span> },
-  { accessorKey: "status", header: "Status", cell: ({ getValue }) => <StatusBadge status={getValue()} /> },
+  {
+    accessorKey: "subcategoryCode", header: "Sub-Category",
+    cell: ({ getValue }) => <span className="font-mono text-blue-400 font-semibold bg-blue-500/10 px-2 py-0.5 rounded-lg text-xs">{getValue()}</span>,
+  },
+  { accessorKey: "companyId", header: "Company / Bank", cell: ({ getValue }) => <span className="font-semibold text-slate-100">{getValue()?.name || "—"}</span> },
+  { accessorKey: "depositAmount", header: "Deposit Amount", cell: ({ getValue }) => <span className="font-bold text-slate-100">{formatCurrency(getValue())}</span> },
+  { accessorKey: "interestRate", header: "Rate %", cell: ({ getValue }) => <span className="text-amber-400 font-semibold">{getValue()}%</span> },
+  { accessorKey: "maturityDate", header: "Maturity Date", cell: ({ getValue }) => <span className="text-slate-300">{formatDate(getValue())}</span> },
+  { accessorKey: "maturityAmount", header: "Maturity Amount", cell: ({ getValue }) => getValue() ? <span className="text-emerald-400 font-bold">{formatCurrency(getValue())}</span> : <span className="text-slate-500">—</span> },
 ];
 
-export default function FixedDepositsPage() {
+export default function FixedIncomePage() {
   const [records, setRecords] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -235,18 +244,16 @@ export default function FixedDepositsPage() {
   const [editRecord, setEditRecord] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
 
-  // Summary stats
-  const totalFD = records.reduce((s, r) => s + (r.amount || 0), 0);
+  const totalDeposits = records.reduce((s, r) => s + (r.depositAmount || 0), 0);
   const totalMaturity = records.reduce((s, r) => s + (r.maturityAmount || 0), 0);
-  const totalInterest = records.reduce((s, r) => s + (r.interestEarned || 0), 0);
 
   const fetchData = useCallback(async (p = 1, s = "") => {
     setLoading(true);
     try {
       const res = await fdService.getAll({ page: p, limit: 10, search: s });
-      setRecords(res.data.data);
+      setRecords(res.data.data || []);
       setTotal(res.data.pagination?.total || 0);
-    } catch { toast.error("Failed to load FDs"); }
+    } catch { toast.error("Failed to load Fixed Income records"); }
     finally { setLoading(false); }
   }, []);
 
@@ -255,19 +262,19 @@ export default function FixedDepositsPage() {
   const handleFormSubmit = async (data) => {
     setFormLoading(true);
     try {
-      if (editRecord) { await fdService.update(editRecord._id, data); toast.success("Fixed Income updated!"); }
-      else { await fdService.create(data); toast.success("Fixed Income created!"); }
+      if (editRecord) { await fdService.update(editRecord._id, data); toast.success("Updated!"); }
+      else { await fdService.create(data); toast.success("Record created!"); }
       setModalOpen(false);
       fetchData(page, search);
     } catch (e) { toast.error(e.response?.data?.message || "Failed"); }
     finally { setFormLoading(false); }
   };
 
-  const handleDeleteConfirm = async () => {
+  const handleDelete = async () => {
     setDeleteLoading(true);
     try {
       await fdService.delete(deleteId);
-      toast.success("Fixed Income deleted!");
+      toast.success("Deleted!");
       setDeleteOpen(false);
       fetchData(page, search);
     } catch { toast.error("Delete failed"); }
@@ -293,51 +300,43 @@ export default function FixedDepositsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Fixed Income"
-        description="Track and manage all fixed income investments"
+        title="Fixed Income — Fresh Fixed Deposit"
+        description="Record and manage fixed income investments"
         actions={
           <button onClick={() => { setEditRecord(null); setModalOpen(true); }}
             className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium rounded-xl transition-all shadow-lg shadow-blue-500/20">
-            <Plus className="w-4 h-4" /> Add Fixed Income
+            <Plus className="w-4 h-4" /> Add Record
           </button>
         }
       />
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {[
-          { label: "Total Invested", value: formatCurrency(totalFD), icon: Banknote, color: "stat-card-blue" },
-          { label: "Total Maturity", value: formatCurrency(totalMaturity), icon: TrendingUp, color: "stat-card-emerald" },
-          { label: "Total Interest", value: formatCurrency(totalInterest), icon: Calculator, color: "stat-card-amber" },
-        ].map((s) => (
-          <div key={s.label} className={`rounded-2xl p-5 ${s.color}`}>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-slate-400 text-sm">{s.label}</p>
-              <s.icon className="w-5 h-5 text-slate-500" />
-            </div>
-            <p className="text-2xl font-bold text-slate-100">{s.value}</p>
-          </div>
-        ))}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="glass-card rounded-2xl p-5 border border-blue-500/20 bg-blue-500/5">
+          <p className="text-slate-400 text-sm mb-2">Total Deposit Amount</p>
+          <p className="text-2xl font-bold text-slate-100">{formatCurrency(totalDeposits)}</p>
+        </div>
+        <div className="glass-card rounded-2xl p-5 border border-emerald-500/20 bg-emerald-500/5">
+          <p className="text-slate-400 text-sm mb-2">Total Maturity Amount</p>
+          <p className="text-2xl font-bold text-emerald-400">{formatCurrency(totalMaturity)}</p>
+        </div>
       </div>
 
       <div className="glass-card rounded-2xl p-5">
         <DataTable
-          columns={[...columns, actionColumn]}
+          columns={[...txColumns, actionColumn]}
           data={records} loading={loading} totalRows={total}
           page={page} pageSize={10}
           onPageChange={(p) => { setPage(p); fetchData(p, search); }}
           onSearch={(s) => { setSearch(s); setPage(1); fetchData(1, s); }}
-          searchPlaceholder="Search by bank name..."
+          searchPlaceholder="Search fixed income records..."
         />
       </div>
 
       <FormModal isOpen={modalOpen} onClose={() => setModalOpen(false)}
-        title={editRecord ? "Edit Fixed Income" : "Add Fixed Income"} size="xl">
+        title={editRecord ? "Edit Fixed Income Record" : "Add Fixed Income Record"} size="xl">
         <FDForm data={editRecord} onSubmit={handleFormSubmit} isLoading={formLoading} onCancel={() => setModalOpen(false)} />
       </FormModal>
-
-      <ConfirmDialog isOpen={deleteOpen} onClose={() => setDeleteOpen(false)}
-        onConfirm={handleDeleteConfirm} loading={deleteLoading} />
+      <ConfirmDialog isOpen={deleteOpen} onClose={() => setDeleteOpen(false)} onConfirm={handleDelete} loading={deleteLoading} />
     </div>
   );
 }
